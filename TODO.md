@@ -6,7 +6,13 @@
 - When a subagent finishes, record the result here and move the task to Completed.
 
 ## Active Tasks (In Progress)
-
+- [ ] **matcher - create Match struct**
+  - Gameplan:
+    - define `Match` using all `MatchCandidate` fields
+    - add nflverse ID field
+    - add Error field
+    - keep it staged only; do not start implementation until explicitly asked
+  - *Status:* Queued / promoted, not started
 
 ## Backlog (Upcoming)
 
@@ -14,20 +20,14 @@ Let's make our matcher more robust!
 All matching against input strings should be case insensitive. spaces, dashes, periods, and other non-alphanumeric characters should be considered separators.
 I will use . as the separator in my examples but it should work for all non-alphanumeric characters. 
 
-- [ ] **matcher - create MatchCandidate struct**
-  - MatchCandidate fields should be:
-    - GameType - string enum - SB,CON,DIV,WC,RS
-    - GameDate - string - YYYY-MM-DD
-    - GameWeek - string
-    - SeasonYear - string - YYYY 
-    - AwayTeam / HomeTeam - string
-
 - [ ] **matcher - create Match struct**
   - Match fields should be:
     - all fields from MatchCandidate
     - nflverse ID or 0 (when Error is not null)
     - Error - Error or null (when nflverse ID is not 0)
 ## Completed
+- [x] **matcher - create MatchCandidate struct**
+  - *Result:* Added `matcher.MatchCandidate` plus `matcher.GameType` string constants (`SB`, `CON`, `DIV`, `WC`, `RS`), kept existing matcher behavior unchanged, added a focused matcher test, and `go test ./...` passes.
 - [x] **Add Unit Tests**
   - *Result:* Added package tests for `db`, `sportarr`, and `nflverse`, covering schema/init behavior plus mocked HTTP/CSV ingest paths. `go test ./...` passes.
 - [x] **Implement 48-hour sync logic**

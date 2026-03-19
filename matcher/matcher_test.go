@@ -4,6 +4,36 @@ import (
 	"testing"
 )
 
+func TestMatchCandidateFields(t *testing.T) {
+	candidate := MatchCandidate{
+		GameType:   GameTypeRegularSeason,
+		GameDate:   "2021-09-19",
+		GameWeek:   "2",
+		SeasonYear: "2021",
+		AwayTeam:   "NE",
+		HomeTeam:   "NYJ",
+	}
+
+	if candidate.GameType != GameTypeRegularSeason {
+		t.Fatalf("expected game type %q, got %q", GameTypeRegularSeason, candidate.GameType)
+	}
+	if candidate.GameDate != "2021-09-19" {
+		t.Fatalf("expected game date 2021-09-19, got %q", candidate.GameDate)
+	}
+	if candidate.GameWeek != "2" {
+		t.Fatalf("expected game week 2, got %q", candidate.GameWeek)
+	}
+	if candidate.SeasonYear != "2021" {
+		t.Fatalf("expected season year 2021, got %q", candidate.SeasonYear)
+	}
+	if candidate.AwayTeam != "NE" {
+		t.Fatalf("expected away team NE, got %q", candidate.AwayTeam)
+	}
+	if candidate.HomeTeam != "NYJ" {
+		t.Fatalf("expected home team NYJ, got %q", candidate.HomeTeam)
+	}
+}
+
 func TestParseReleases(t *testing.T) {
 	var files = []string{
 		"NFL.2005.Divisional.S2005E019.NE.at.DEN.mkv",
