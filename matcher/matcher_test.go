@@ -7,14 +7,18 @@ import (
 
 func TestMatchCandidateFields(t *testing.T) {
 	candidate := MatchCandidate{
-		GameType:   GameTypeRegularSeason,
-		GameDate:   "2021-09-19",
-		GameWeek:   "2",
-		SeasonYear: "2021",
-		AwayTeam:   "NE",
-		HomeTeam:   "NYJ",
+		OriginalInput: "NFL.2021-09-19.S2021E002.NE.at.NYJ.mkv",
+		GameType:      GameTypeRegularSeason,
+		GameDate:      "2021-09-19",
+		GameWeek:      "2",
+		SeasonYear:    "2021",
+		AwayTeam:      "NE",
+		HomeTeam:      "NYJ",
 	}
 
+	if candidate.OriginalInput != "NFL.2021-09-19.S2021E002.NE.at.NYJ.mkv" {
+		t.Fatalf("expected original input NFL.2021-09-19.S2021E002.NE.at.NYJ.mkv, got %q", candidate.OriginalInput)
+	}
 	if candidate.GameType != GameTypeRegularSeason {
 		t.Fatalf("expected game type %q, got %q", GameTypeRegularSeason, candidate.GameType)
 	}
@@ -38,16 +42,20 @@ func TestMatchCandidateFields(t *testing.T) {
 func TestMatchFields(t *testing.T) {
 	matchErr := errors.New("no nflverse match")
 	match := Match{
-		GameType:   GameTypeRegularSeason,
-		GameDate:   "2021-09-19",
-		GameWeek:   "2",
-		SeasonYear: "2021",
-		AwayTeam:   "NE",
-		HomeTeam:   "NYJ",
-		NflverseID: "2021_02_NE_NYJ",
-		Error:      matchErr,
+		OriginalInput: "NFL.2021-09-19.S2021E002.NE.at.NYJ.mkv",
+		GameType:      GameTypeRegularSeason,
+		GameDate:      "2021-09-19",
+		GameWeek:      "2",
+		SeasonYear:    "2021",
+		AwayTeam:      "NE",
+		HomeTeam:      "NYJ",
+		NflverseID:    "2021_02_NE_NYJ",
+		Error:         matchErr,
 	}
 
+	if match.OriginalInput != "NFL.2021-09-19.S2021E002.NE.at.NYJ.mkv" {
+		t.Fatalf("expected original input NFL.2021-09-19.S2021E002.NE.at.NYJ.mkv, got %q", match.OriginalInput)
+	}
 	if match.GameType != GameTypeRegularSeason {
 		t.Fatalf("expected game type %q, got %q", GameTypeRegularSeason, match.GameType)
 	}

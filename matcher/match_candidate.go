@@ -14,23 +14,25 @@ const (
 // MatchCandidate is the normalized set of fields the matcher can use to
 // identify a game before resolving it to a final match record.
 type MatchCandidate struct {
-	GameType   GameType
-	GameDate   string
-	GameWeek   string
-	SeasonYear string
-	AwayTeam   string
-	HomeTeam   string
+	OriginalInput string
+	GameType      GameType
+	GameDate      string
+	GameWeek      string
+	SeasonYear    string
+	AwayTeam      string
+	HomeTeam      string
 }
 
 // Match is a resolved game match record. It carries all candidate fields plus
 // the resolved nflverse identifier and any match error encountered.
 type Match struct {
-	GameType   GameType
-	GameDate   string
-	GameWeek   string
-	SeasonYear string
-	AwayTeam   string
-	HomeTeam   string
-	NflverseID string
-	Error      error
+	OriginalInput string
+	GameType      GameType
+	GameDate      string
+	GameWeek      string
+	SeasonYear    string
+	AwayTeam      string
+	HomeTeam      string
+	NflverseID    string
+	Error         error
 }

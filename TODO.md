@@ -15,9 +15,6 @@ All matching against input strings should be case insensitive. Spaces, dashes, p
 The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
 `MatchCandidate` should also retain the original unaltered input string.
 
-- [ ] **matcher - add OriginalInput field to MatchCandidate**
-  - Add a field to preserve the exact original input string passed into the pipeline.
-
 - [ ] **matcher - add normalization helpers**
   - Build helpers for case-insensitive matching.
   - Treat non-alphanumeric runs as separators for matching/tokenization.
@@ -81,6 +78,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Add tests using real examples from `files.txt`.
 
 ## Completed
+- [x] **matcher - add OriginalInput field to MatchCandidate**
+  - *Result:* Added `OriginalInput` to `matcher.MatchCandidate`, mirrored it on `matcher.Match` to keep resolved matches carrying all candidate fields, updated focused matcher tests, and `go test ./...` passes.
 - [x] **matcher - create Match struct**
   - *Result:* Added `matcher.Match` with all `MatchCandidate` fields plus `NflverseID` and `Error`, added a focused matcher test for the new struct, and `go test ./...` passes.
 - [x] **matcher - create MatchCandidate struct**
