@@ -78,6 +78,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Add tests using real examples from `files.txt`.
 
 ## Completed
+- [x] **matcher - add normalization helpers**
+  - *Result:* Added explicit normalization/tokenization helpers for case-insensitive matching with non-alphanumeric separator collapsing, wired the existing matcher flow to use them, extended focused matcher tests for separator-heavy inputs and postseason/date extraction, and `go test ./...` passes.
 - [x] **matcher - add OriginalInput field to MatchCandidate**
   - *Result:* Added `OriginalInput` to `matcher.MatchCandidate`, mirrored it on `matcher.Match` to keep resolved matches carrying all candidate fields, updated focused matcher tests, and `go test ./...` passes.
 - [x] **matcher - create Match struct**
