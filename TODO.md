@@ -7,6 +7,20 @@
 - When a subagent finishes, record the result here and move the task to Completed.
 
 ## Active Tasks (In Progress)
+- [ ] **matcher - implement SeasonYear extraction/derivation stage**
+  - Gameplan:
+    - derive from `GameDate` when present
+    - otherwise extract standalone season year from the working string
+    - add tests for Jan/Feb rollover and direct extraction
+  - *Status:* Queued / promoted, not started
+
+- [ ] **matcher - implement GameType extraction stage**
+  - Gameplan:
+    - map postseason aliases to `SB`, `CON`, `DIV`, `WC`
+    - default to `RS`
+    - keep this stage non-mutating
+    - add focused mapping tests
+  - *Status:* Queued / promoted, not started
 
 ## Backlog (Upcoming)
 
@@ -14,30 +28,6 @@ Let's make our matcher more robust!
 All matching against input strings should be case insensitive. Spaces, dashes, periods, and other non-alphanumeric characters should be considered separators.
 The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
 `MatchCandidate` should also retain the original unaltered input string.
-
-- [ ] **matcher - implement GameDate extraction stage**
-  - Extract `YYYY-MM-DD`, `YYYY.MM.DD`, `YYYY/MM/DD`, or `YYYYMMDD`.
-  - Standardize to `YYYY-MM-DD`.
-  - Remove extracted date from the working string before passing to the next stage.
-  - If no date is found, pass the string through unchanged.
-  - Add tests showing the before/after transformation.
-
-- [ ] **matcher - implement SeasonYear extraction/derivation stage**
-  - If `GameDate` exists, derive `SeasonYear` from it:
-    - Jan/Feb => previous year
-    - otherwise => same year as `GameDate`
-  - If `GameDate` does not exist, try extracting a standalone `YYYY` from the string and remove it from the working string.
-  - Add tests for both direct extraction and date-derived season year.
-
-- [ ] **matcher - implement GameType extraction stage**
-  - Map these case-insensitive patterns:
-    - `sb`, `super.bowl`, `superbowl` => `SB`
-    - `conference`, `con`, `championship` => `CON`
-    - `div`, `division`, `divisional` => `DIV`
-    - `wc`, `wildcard`, `wild.card` => `WC`
-    - otherwise => `RS`
-  - Do not mutate the working string in this stage.
-  - Add focused tests for each mapping.
 
 - [ ] **matcher - implement GameWeek extraction stage**
   - Support `week.#`, `week.##`, `w#`, `w##`, `wk.#`, `wk.##`.
@@ -73,6 +63,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Add tests using real examples from `files.txt`.
 
 ## Completed
+- [x] **matcher - implement GameDate extraction stage**
+  - *Result:* Added an explicit `extractGameDateStage` that extracts `YYYY-MM-DD`, `YYYY.MM.DD`, `YYYY/MM/DD`, and `YYYYMMDD` after normalization, standardizes to `YYYY-MM-DD`, removes the matched date from the working string for downstream stages, added transformation-focused matcher tests, and `go test ./...` passes.
 - [x] **matcher - add normalization helpers**
   - *Result:* Added explicit normalization/tokenization helpers for case-insensitive matching with non-alphanumeric separator collapsing, wired the existing matcher flow to use them, extended focused matcher tests for separator-heavy inputs and postseason/date extraction, and `go test ./...` passes.
 - [x] **matcher - add OriginalInput field to MatchCandidate**

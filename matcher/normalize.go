@@ -7,7 +7,6 @@ import (
 
 var (
 	nonAlphanumericRunRegex = regexp.MustCompile(`[^[:alnum:]]+`)
-	dateRegex               = regexp.MustCompile(`((?:19|20)\d{2})\s*([0-1]\d)\s*([0-3]\d)`)
 )
 
 // NormalizeForMatch lowercases the input, collapses runs of non-alphanumeric
@@ -108,11 +107,6 @@ func isSeasonYearToken(token string) bool {
 }
 
 func extractDateMatch(normalized string) (string, bool) {
-	compact := strings.ReplaceAll(normalized, " ", "")
-	match := dateRegex.FindStringSubmatch(compact)
-	if match == nil {
-		return "", false
-	}
-
-	return match[1] + "-" + match[2] + "-" + match[3], true
+	date, _, ok := extractGameDateStage(normalized)
+	return date, ok
 }

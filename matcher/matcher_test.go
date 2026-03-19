@@ -187,6 +187,66 @@ func TestExtractDateMatch(t *testing.T) {
 	}
 }
 
+func TestExtractGameDateStage(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantDate  string
+		wantNext  string
+		wantFound bool
+	}{
+		{
+			name:      "hyphen separated date",
+			input:     normalizeForMatching("NFL.2021-09-19.S2021E002.NE.at.NYJ.mkv"),
+			wantDate:  "2021-09-19",
+			wantNext:  "nfl s2021e002 ne at nyj mkv",
+			wantFound: true,
+		},
+		{
+			name:      "dot separated date",
+			input:     normalizeForMatching("NFL.2021.09.19.S2021E002.NE.at.NYJ.mkv"),
+			wantDate:  "2021-09-19",
+			wantNext:  "nfl s2021e002 ne at nyj mkv",
+			wantFound: true,
+		},
+		{
+			name:      "slash separated date",
+			input:     normalizeForMatching("NFL/2021/09/19/NE/at/NYJ"),
+			wantDate:  "2021-09-19",
+			wantNext:  "nfl ne at nyj",
+			wantFound: true,
+		},
+		{
+			name:      "compact date",
+			input:     normalizeForMatching("NFL_20210919_Patriots_vs_Jets"),
+			wantDate:  "2021-09-19",
+			wantNext:  "nfl patriots vs jets",
+			wantFound: true,
+		},
+		{
+			name:      "no date leaves working string unchanged",
+			input:     normalizeForMatching("NFL.S2021E002.NE.at.NYJ.mkv"),
+			wantNext:  "nfl s2021e002 ne at nyj mkv",
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDate, gotNext, gotFound := extractGameDateStage(tt.input)
+			if gotFound != tt.wantFound {
+				t.Fatalf("expected found=%v, got %v", tt.wantFound, gotFound)
+			}
+			if gotDate != tt.wantDate {
+				t.Fatalf("expected date %q, got %q", tt.wantDate, gotDate)
+			}
+			if gotNext != tt.wantNext {
+				t.Fatalf("expected next working string %q, got %q", tt.wantNext, gotNext)
+			}
+		})
+	}
+}
+
 func TestNormalizeForMatch(t *testing.T) {
 	input := "NFL__2018...Super---Bowl__Patriots-vs-Rams"
 	got := NormalizeForMatch(input)
