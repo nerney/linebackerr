@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -18,9 +16,8 @@ const (
 	dataDir  = "/config"
 )
 
-var DB *sql.DB
-
-func Init() error {
+// Init downloads the nflverse CSV data and loads it into the provided shared linebackerr database.
+func Init(db *sql.DB) error {
 	fmt.Println("Initializing nflverse package...")
 
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
@@ -37,31 +34,16 @@ func Init() error {
 		return err
 	}
 
-	dbPath := filepath.Join(dataDir, "nflverse.db")
-	fmt.Printf("Connecting to SQLite database at %s...\n", dbPath)
-	
-	var err error
-	DB, err = sql.Open("sqlite3", dbPath)
-	if err != nil {
-		return fmt.Errorf("failed to open sqlite db: %w", err)
-	}
-	
-	if err := DB.Ping(); err != nil {
-		return fmt.Errorf("failed to ping sqlite db: %w", err)
-	}
-	
-	fmt.Println("Successfully connected to SQLite database.")
-
-	if err := initDB(DB); err != nil {
+	if err := initDB(db); err != nil {
 		return fmt.Errorf("failed to initialize db schema: %w", err)
 	}
 
-	teamMap, err := loadTeams(DB, teamsPath)
+	teamMap, err := loadTeams(db, teamsPath)
 	if err != nil {
 		return fmt.Errorf("failed to load teams: %w", err)
 	}
 
-	if err := loadGames(DB, gamesPath, teamMap); err != nil {
+	if err := loadGames(db, gamesPath, teamMap); err != nil {
 		return fmt.Errorf("failed to load games: %w", err)
 	}
 
@@ -70,15 +52,15 @@ func Init() error {
 }
 
 func initDB(db *sql.DB) error {
-	fmt.Println("Creating database tables...")
+	fmt.Println("Creating database tables for nflverse...")
 	
 	queries := []string{
-		`CREATE TABLE IF NOT EXISTS teams (
+		`CREATE TABLE IF NOT EXISTS nflverse_teams (
 			id TEXT PRIMARY KEY,
 			abbr TEXT,
 			full_name TEXT
 		);`,
-		`CREATE TABLE IF NOT EXISTS games (
+		`CREATE TABLE IF NOT EXISTS nflverse_games (
 			game_id TEXT PRIMARY KEY,
 			season INTEGER,
 			week INTEGER,
@@ -87,15 +69,15 @@ func initDB(db *sql.DB) error {
 			home_team_id TEXT,
 			away_score INTEGER,
 			home_score INTEGER,
-			FOREIGN KEY (away_team_id) REFERENCES teams(id),
-			FOREIGN KEY (home_team_id) REFERENCES teams(id)
+			FOREIGN KEY (away_team_id) REFERENCES nflverse_teams(id),
+			FOREIGN KEY (home_team_id) REFERENCES nflverse_teams(id)
 		);`,
-		`CREATE TABLE IF NOT EXISTS team_games (
+		`CREATE TABLE IF NOT EXISTS nflverse_team_games (
 			team_id TEXT,
 			game_id TEXT,
 			PRIMARY KEY (team_id, game_id),
-			FOREIGN KEY (team_id) REFERENCES teams(id),
-			FOREIGN KEY (game_id) REFERENCES games(game_id)
+			FOREIGN KEY (team_id) REFERENCES nflverse_teams(id),
+			FOREIGN KEY (game_id) REFERENCES nflverse_games(game_id)
 		);`,
 	}
 
@@ -135,7 +117,7 @@ func loadTeams(db *sql.DB, path string) (map[string]string, error) {
 		return nil, err
 	}
 	
-	stmt, err := tx.Prepare("REPLACE INTO teams (id, abbr, full_name) VALUES (?, ?, ?)")
+	stmt, err := tx.Prepare("REPLACE INTO nflverse_teams (id, abbr, full_name) VALUES (?, ?, ?)")
 	if err != nil {
 		return nil, err
 	}
@@ -202,13 +184,13 @@ func loadGames(db *sql.DB, path string, teamMap map[string]string) error {
 		return err
 	}
 	
-	gameStmt, err := tx.Prepare("INSERT OR IGNORE INTO games (game_id, season, week, gameday, away_team_id, home_team_id, away_score, home_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+	gameStmt, err := tx.Prepare("INSERT OR IGNORE INTO nflverse_games (game_id, season, week, gameday, away_team_id, home_team_id, away_score, home_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer gameStmt.Close()
 
-	linkStmt, err := tx.Prepare("INSERT OR IGNORE INTO team_games (team_id, game_id) VALUES (?, ?)")
+	linkStmt, err := tx.Prepare("INSERT OR IGNORE INTO nflverse_team_games (team_id, game_id) VALUES (?, ?)")
 	if err != nil {
 		return err
 	}
