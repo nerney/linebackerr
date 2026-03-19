@@ -1,14 +1,13 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1-alpine AS builder
 WORKDIR /app
-RUN apk add --no-cache gcc musl-dev
-COPY go.mod go.sum ./
+COPY go.* ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=1 GOOS=linux go build -o main .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o linebackerr .
 
 FROM alpine:latest
 WORKDIR /app
-COPY --from=builder /app/main .
+RUN apk add --no-cache ffmpeg && ffmpeg --version
+COPY --from=builder /app/linebackerr .
 EXPOSE 6666
-CMD ["./main"]
-
+CMD ["./linebackerr"]
