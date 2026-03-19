@@ -247,6 +247,62 @@ func TestExtractGameDateStage(t *testing.T) {
 	}
 }
 
+func TestExtractSeasonYearStage(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		gameDate       string
+		wantSeasonYear string
+		wantNext       string
+		wantFound      bool
+	}{
+		{
+			name:           "derive same season year from in-season game date",
+			input:          normalizeForMatching("NFL.S2021E002.NE.at.NYJ.mkv"),
+			gameDate:       "2021-09-19",
+			wantSeasonYear: "2021",
+			wantNext:       "nfl s2021e002 ne at nyj mkv",
+			wantFound:      true,
+		},
+		{
+			name:           "derive previous season year for january game date",
+			input:          normalizeForMatching("NFL.Wild.Card.BAL.at.BUF"),
+			gameDate:       "2022-01-15",
+			wantSeasonYear: "2021",
+			wantNext:       "nfl wild card bal at buf",
+			wantFound:      true,
+		},
+		{
+			name:           "extract standalone season year and remove it from working string",
+			input:          normalizeForMatching("NFL 2018 Patriots vs Steelers"),
+			wantSeasonYear: "2018",
+			wantNext:       "nfl patriots vs steelers",
+			wantFound:      true,
+		},
+		{
+			name:      "no date or standalone season year leaves working string unchanged",
+			input:     normalizeForMatching("NFL S2021E002 Patriots vs Steelers"),
+			wantNext:  "nfl s2021e002 patriots vs steelers",
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSeasonYear, gotNext, gotFound := extractSeasonYearStage(tt.input, tt.gameDate)
+			if gotFound != tt.wantFound {
+				t.Fatalf("expected found=%v, got %v", tt.wantFound, gotFound)
+			}
+			if gotSeasonYear != tt.wantSeasonYear {
+				t.Fatalf("expected season year %q, got %q", tt.wantSeasonYear, gotSeasonYear)
+			}
+			if gotNext != tt.wantNext {
+				t.Fatalf("expected next working string %q, got %q", tt.wantNext, gotNext)
+			}
+		})
+	}
+}
+
 func TestNormalizeForMatch(t *testing.T) {
 	input := "NFL__2018...Super---Bowl__Patriots-vs-Rams"
 	got := NormalizeForMatch(input)

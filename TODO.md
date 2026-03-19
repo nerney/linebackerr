@@ -7,13 +7,6 @@
 - When a subagent finishes, record the result here and move the task to Completed.
 
 ## Active Tasks (In Progress)
-- [ ] **matcher - implement SeasonYear extraction/derivation stage**
-  - Gameplan:
-    - derive from `GameDate` when present
-    - otherwise extract standalone season year from the working string
-    - add tests for Jan/Feb rollover and direct extraction
-  - *Status:* Queued / promoted, not started
-
 - [ ] **matcher - implement GameType extraction stage**
   - Gameplan:
     - map postseason aliases to `SB`, `CON`, `DIV`, `WC`
@@ -22,25 +15,27 @@
     - add focused mapping tests
   - *Status:* Queued / promoted, not started
 
+- [ ] **matcher - implement GameWeek extraction stage**
+  - Gameplan:
+    - support week/w/wk numeric patterns
+    - support Super Bowl roman numeral extraction when appropriate
+    - remove matched week token from working string
+    - add numeric + roman numeral coverage
+  - *Status:* Queued / promoted, not started
+
+- [ ] **matcher - build nflverse-driven team alias inventory**
+  - Gameplan:
+    - build alias sets from nflverse names/abbreviations/history where practical
+    - capture/document ambiguity tradeoffs
+    - add representative alias tests
+  - *Status:* Queued / promoted, not started
+
 ## Backlog (Upcoming)
 
 Let's make our matcher more robust!
 All matching against input strings should be case insensitive. Spaces, dashes, periods, and other non-alphanumeric characters should be considered separators.
 The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
 `MatchCandidate` should also retain the original unaltered input string.
-
-- [ ] **matcher - implement GameWeek extraction stage**
-  - Support `week.#`, `week.##`, `w#`, `w##`, `wk.#`, `wk.##`.
-  - If `GameType == SB`, also support valid Roman numerals followed by a separator.
-  - Extract into `GameWeek` as a string.
-  - Remove the full matched week token from the working string before the next stage.
-  - Add tests covering numeric and Super Bowl Roman numeral cases.
-
-- [ ] **matcher - build nflverse-driven team alias inventory**
-  - Use nflverse data to build a comprehensive alias set per team.
-  - Include abbreviations, current names, historical names, and city/location variants where practical.
-  - Document ambiguity tradeoffs (for example LA/STL-style edge cases).
-  - Add tests for representative aliases.
 
 - [ ] **matcher - implement home/away team extraction stage**
   - Run the working string through the team matcher.
@@ -63,6 +58,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Add tests using real examples from `files.txt`.
 
 ## Completed
+- [x] **matcher - implement SeasonYear extraction/derivation stage**
+  - *Result:* Added `extractSeasonYearStage` to derive `SeasonYear` from `GameDate` (with Jan/Feb rolling back to the prior season), otherwise extract a standalone season-year token from the normalized working string and remove it for downstream stages; added focused matcher tests for date-derived and direct extraction cases, and `go test ./...` passes.
 - [x] **matcher - implement GameDate extraction stage**
   - *Result:* Added an explicit `extractGameDateStage` that extracts `YYYY-MM-DD`, `YYYY.MM.DD`, `YYYY/MM/DD`, and `YYYYMMDD` after normalization, standardizes to `YYYY-MM-DD`, removes the matched date from the working string for downstream stages, added transformation-focused matcher tests, and `go test ./...` passes.
 - [x] **matcher - add normalization helpers**
