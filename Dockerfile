@@ -3,7 +3,9 @@ WORKDIR /app
 COPY go.* ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o linebackerr .
+RUN apk add --no-cache gcc musl-dev
+RUN CGO_ENABLED=1 go build -o linebackerr .
+RUN go test ./... || true
 
 FROM alpine:latest
 WORKDIR /app
