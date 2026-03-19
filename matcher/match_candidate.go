@@ -21,3 +21,16 @@ type MatchCandidate struct {
 	AwayTeam   string
 	HomeTeam   string
 }
+
+// Match is a resolved game match record. It carries all candidate fields plus
+// the resolved nflverse identifier and any match error encountered.
+type Match struct {
+	GameType   GameType
+	GameDate   string
+	GameWeek   string
+	SeasonYear string
+	AwayTeam   string
+	HomeTeam   string
+	NflverseID string
+	Error      error
+}

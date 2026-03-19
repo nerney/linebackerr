@@ -2,30 +2,87 @@
 
 ## Working Rules
 - All task runs should be executed by a subagent using the same config/model defaults as the main primary agent unless we explicitly decide otherwise.
+- Only one TODO task may be running at a time. Never run concurrent tasks from this queue.
 - When a subagent starts work on a task, update that task status in this file.
 - When a subagent finishes, record the result here and move the task to Completed.
 
 ## Active Tasks (In Progress)
-- [ ] **matcher - create Match struct**
-  - Gameplan:
-    - define `Match` using all `MatchCandidate` fields
-    - add nflverse ID field
-    - add Error field
-    - keep it staged only; do not start implementation until explicitly asked
-  - *Status:* Queued / promoted, not started
 
 ## Backlog (Upcoming)
 
-Let's make our matcher more robust! 
-All matching against input strings should be case insensitive. spaces, dashes, periods, and other non-alphanumeric characters should be considered separators.
-I will use . as the separator in my examples but it should work for all non-alphanumeric characters. 
+Let's make our matcher more robust!
+All matching against input strings should be case insensitive. Spaces, dashes, periods, and other non-alphanumeric characters should be considered separators.
+The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
+`MatchCandidate` should also retain the original unaltered input string.
 
-- [ ] **matcher - create Match struct**
-  - Match fields should be:
-    - all fields from MatchCandidate
-    - nflverse ID or 0 (when Error is not null)
-    - Error - Error or null (when nflverse ID is not 0)
+- [ ] **matcher - add OriginalInput field to MatchCandidate**
+  - Add a field to preserve the exact original input string passed into the pipeline.
+
+- [ ] **matcher - add normalization helpers**
+  - Build helpers for case-insensitive matching.
+  - Treat non-alphanumeric runs as separators for matching/tokenization.
+  - Keep pipeline transformations explicit and testable.
+
+- [ ] **matcher - implement GameDate extraction stage**
+  - Extract `YYYY-MM-DD`, `YYYY.MM.DD`, `YYYY/MM/DD`, or `YYYYMMDD`.
+  - Standardize to `YYYY-MM-DD`.
+  - Remove extracted date from the working string before passing to the next stage.
+  - If no date is found, pass the string through unchanged.
+  - Add tests showing the before/after transformation.
+
+- [ ] **matcher - implement SeasonYear extraction/derivation stage**
+  - If `GameDate` exists, derive `SeasonYear` from it:
+    - Jan/Feb => previous year
+    - otherwise => same year as `GameDate`
+  - If `GameDate` does not exist, try extracting a standalone `YYYY` from the string and remove it from the working string.
+  - Add tests for both direct extraction and date-derived season year.
+
+- [ ] **matcher - implement GameType extraction stage**
+  - Map these case-insensitive patterns:
+    - `sb`, `super.bowl`, `superbowl` => `SB`
+    - `conference`, `con`, `championship` => `CON`
+    - `div`, `division`, `divisional` => `DIV`
+    - `wc`, `wildcard`, `wild.card` => `WC`
+    - otherwise => `RS`
+  - Do not mutate the working string in this stage.
+  - Add focused tests for each mapping.
+
+- [ ] **matcher - implement GameWeek extraction stage**
+  - Support `week.#`, `week.##`, `w#`, `w##`, `wk.#`, `wk.##`.
+  - If `GameType == SB`, also support valid Roman numerals followed by a separator.
+  - Extract into `GameWeek` as a string.
+  - Remove the full matched week token from the working string before the next stage.
+  - Add tests covering numeric and Super Bowl Roman numeral cases.
+
+- [ ] **matcher - build nflverse-driven team alias inventory**
+  - Use nflverse data to build a comprehensive alias set per team.
+  - Include abbreviations, current names, historical names, and city/location variants where practical.
+  - Document ambiguity tradeoffs (for example LA/STL-style edge cases).
+  - Add tests for representative aliases.
+
+- [ ] **matcher - implement home/away team extraction stage**
+  - Run the working string through the team matcher.
+  - First matched team becomes `AwayTeam`, second becomes `HomeTeam`.
+  - Do not mutate the working string in this stage.
+  - Add tests for common patterns like `Patriots.at.Browns` and similar variants.
+
+- [ ] **matcher - implement MatchCandidate extraction pipeline function**
+  - Create a pipeline entrypoint that takes a single input string and returns a `MatchCandidate`.
+  - Execute stages progressively in order:
+    1. GameDate
+    2. SeasonYear
+    3. GameType
+    4. GameWeek
+    5. Away/Home team extraction
+  - Preserve both original input and transformed intermediate behavior through tests.
+
+- [ ] **matcher - expand array-based matcher flow to use pipeline**
+  - Update the existing matcher package flow that processes arrays of release strings so it calls the new single-string pipeline function.
+  - Add tests using real examples from `files.txt`.
+
 ## Completed
+- [x] **matcher - create Match struct**
+  - *Result:* Added `matcher.Match` with all `MatchCandidate` fields plus `NflverseID` and `Error`, added a focused matcher test for the new struct, and `go test ./...` passes.
 - [x] **matcher - create MatchCandidate struct**
   - *Result:* Added `matcher.MatchCandidate` plus `matcher.GameType` string constants (`SB`, `CON`, `DIV`, `WC`, `RS`), kept existing matcher behavior unchanged, added a focused matcher test, and `go test ./...` passes.
 - [x] **Add Unit Tests**
