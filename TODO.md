@@ -15,11 +15,6 @@ All matching against input strings should be case insensitive. Spaces, dashes, p
 The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
 `MatchCandidate` should also retain the original unaltered input string.
 
-- [ ] **matcher - add normalization helpers**
-  - Build helpers for case-insensitive matching.
-  - Treat non-alphanumeric runs as separators for matching/tokenization.
-  - Keep pipeline transformations explicit and testable.
-
 - [ ] **matcher - implement GameDate extraction stage**
   - Extract `YYYY-MM-DD`, `YYYY.MM.DD`, `YYYY/MM/DD`, or `YYYYMMDD`.
   - Standardize to `YYYY-MM-DD`.
