@@ -124,9 +124,14 @@ func TestService_SubmitAndMonitorSABnzbd(t *testing.T) {
 		case "history":
 			mu.Lock()
 			historyCalls++
+			call := historyCalls
 			mu.Unlock()
 
 			w.Header().Set("Content-Type", "application/json")
+			if call < 2 {
+				_, _ = w.Write([]byte(`{"history":{"slots":[]}}`))
+				return
+			}
 			_, _ = w.Write([]byte(`{"history":{"slots":[{"nzo_id":"nzo-1","name":"NFL.2024.09.08.BUF.vs.NE","status":"Completed"}]}}`))
 		default:
 			t.Fatalf("unexpected mode: %s", r.URL.Query().Get("mode"))
@@ -157,6 +162,14 @@ func TestService_SubmitAndMonitorSABnzbd(t *testing.T) {
 	active, err := svc.Monitor(context.Background())
 	if err != nil {
 		t.Fatalf("Monitor returned error: %v", err)
+	}
+	if len(active) != 1 {
+		t.Fatalf("active len = %d, want 1 while history has not finalized", len(active))
+	}
+
+	active, err = svc.Monitor(context.Background())
+	if err != nil {
+		t.Fatalf("Monitor second pass returned error: %v", err)
 	}
 	if len(active) != 0 {
 		t.Fatalf("active len = %d, want 0 after completion", len(active))
