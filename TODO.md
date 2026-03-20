@@ -9,27 +9,7 @@
 - When a subagent finishes, record the result here and move the task to Completed.
 
 ## Active Tasks (In Progress)
-
-## Backlog (Upcoming)
-
-Let's make our matcher more robust!
-All matching against input strings should be case insensitive. Spaces, dashes, periods, and other non-alphanumeric characters should be considered separators.
-The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
-`MatchCandidate` should also retain the original unaltered input string.
-
-  - Refactor startup flow so it conceptually becomes:
-    - `deebee := db.Init()`
-    - `nflv := nflverse.Init(deebee)`
-    - `sportarr.Init(deebee, nflv)`
-    - `srvr := server.Init()`
-    - `srvr.Start()`
-  - Update package APIs/return values as needed so the initialization chain is explicit and `main.go` becomes a thin bootstrap entrypoint.
-  - Remove the sync-check workflow from startup, including the related logic in `main.go` and any associated DB fields/schema used only for sync tracking.
-  - Treat this as a clean-slate initialization task: remove/recreate the current DB files/schema and rebuild from scratch under the new flow.
-  - Make sure the task includes any necessary schema cleanup/migration-by-rebuild work so no dead sync-state remnants remain.
-  - Keep the scope focused on bootstrap/init/server wiring and DB reset mechanics; broader feature changes should stay in separate tasks.
-
-- [ ] **matcher - implement MatchCandidate extraction pipeline function**
+- [ ] **matcher - implement MatchCandidate extraction pipeline function** (Subagent started: 2026-03-19 23:54 EST)
   - Create a pipeline entrypoint that takes a single input string and returns a `MatchCandidate`.
   - Execute stages progressively in order:
     1. GameDate
@@ -38,6 +18,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
     4. GameWeek
     5. Away/Home team extraction
   - Preserve both original input and transformed intermediate behavior through tests.
+
+## Backlog (Upcoming)
 
 - [ ] **matcher - expand array-based matcher flow to use pipeline**
   - Update the existing matcher package flow that processes arrays of release strings so it calls the new single-string pipeline function.
