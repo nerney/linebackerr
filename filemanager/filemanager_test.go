@@ -8,15 +8,16 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpectedRelativePathRegularSeasonNaming(t *testing.T) {
 	t.Parallel()
 
 	manager, err := New(t.TempDir())
-	if err != nil {
-		t.Fatalf("New error: %v", err)
-	}
+	require.NoError(t, err)
 
 	rel, err := manager.ExpectedRelativePath(matcher.Match{
 		GameType:   matcher.GameTypeRegularSeason,
@@ -26,17 +27,11 @@ func TestExpectedRelativePathRegularSeasonNaming(t *testing.T) {
 		HomeTeam:   "NE",
 		GameWeek:   "1",
 	}, "/downloads/game-file.mkv")
-	if err != nil {
-		t.Fatalf("ExpectedRelativePath error: %v", err)
-	}
+	require.NoError(t, err)
 
 	normalized := filepath.ToSlash(rel)
-	if !strings.HasPrefix(normalized, "NFL/Season 2024/Regular Season/") {
-		t.Fatalf("unexpected path prefix: %s", normalized)
-	}
-	if !strings.Contains(normalized, "NFL - 2024-09-08 - BUF NE - Week 1.mkv") {
-		t.Fatalf("unexpected file name in path: %s", normalized)
-	}
+	assert.True(t, strings.HasPrefix(normalized, "NFL/Season 2024/Regular Season/"), "path prefix")
+	assert.Contains(t, normalized, "NFL - 2024-09-08 - BUF NE - Week 1.mkv")
 }
 
 func TestPrepareImportTargetHandlesCollisions(t *testing.T) {
@@ -44,32 +39,18 @@ func TestPrepareImportTargetHandlesCollisions(t *testing.T) {
 
 	root := t.TempDir()
 	manager, err := New(root)
-	if err != nil {
-		t.Fatalf("New error: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := matcher.Match{GameType: matcher.GameTypeConference, SeasonYear: "2023", AwayTeam: "KC", HomeTeam: "BAL", GameWeek: "20"}
 	first, err := manager.ExpectedPath(match, "first.ts")
-	if err != nil {
-		t.Fatalf("ExpectedPath error: %v", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(first), 0o755); err != nil {
-		t.Fatalf("mkdir error: %v", err)
-	}
-	if err := os.WriteFile(first, []byte("existing"), 0o644); err != nil {
-		t.Fatalf("write existing file: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Dir(first), 0o755))
+	require.NoError(t, os.WriteFile(first, []byte("existing"), 0o644))
 
 	placement, err := manager.PrepareImportTarget(match, "fresh.ts")
-	if err != nil {
-		t.Fatalf("PrepareImportTarget error: %v", err)
-	}
-	if placement.AbsolutePath == first {
-		t.Fatalf("expected a non-colliding path, got %s", placement.AbsolutePath)
-	}
-	if !strings.Contains(filepath.Base(placement.AbsolutePath), "(1)") {
-		t.Fatalf("expected collision suffix, got %s", placement.AbsolutePath)
-	}
+	require.NoError(t, err)
+	assert.NotEqual(t, first, placement.AbsolutePath)
+	assert.Contains(t, filepath.Base(placement.AbsolutePath), "(1)")
 }
 
 func TestEnsureFileConsistencyRenamesFileToCanonicalPath(t *testing.T) {
@@ -77,17 +58,11 @@ func TestEnsureFileConsistencyRenamesFileToCanonicalPath(t *testing.T) {
 
 	root := t.TempDir()
 	manager, err := New(root)
-	if err != nil {
-		t.Fatalf("New error: %v", err)
-	}
+	require.NoError(t, err)
 
 	oldPath := filepath.Join(root, "misc", "random-name.mkv")
-	if err := os.MkdirAll(filepath.Dir(oldPath), 0o755); err != nil {
-		t.Fatalf("mkdir error: %v", err)
-	}
-	if err := os.WriteFile(oldPath, []byte("video"), 0o644); err != nil {
-		t.Fatalf("write old file: %v", err)
-	}
+	require.NoError(t, os.MkdirAll(filepath.Dir(oldPath), 0o755))
+	require.NoError(t, os.WriteFile(oldPath, []byte("video"), 0o644))
 
 	result, err := manager.EnsureFileConsistency(matcher.Match{
 		GameType:   matcher.GameTypeRegularSeason,
@@ -96,21 +71,13 @@ func TestEnsureFileConsistencyRenamesFileToCanonicalPath(t *testing.T) {
 		AwayTeam:   "NYJ",
 		HomeTeam:   "BUF",
 	}, oldPath)
-	if err != nil {
-		t.Fatalf("EnsureFileConsistency error: %v", err)
-	}
-	if !result.Updated {
-		t.Fatalf("expected file to be moved")
-	}
-	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
-		t.Fatalf("expected old path to be removed, err=%v", err)
-	}
-	if _, err := os.Stat(result.UpdatedPath); err != nil {
-		t.Fatalf("expected updated path to exist: %v", err)
-	}
-	if !strings.HasPrefix(filepath.ToSlash(result.RelativePath), "NFL/Season 2024/Regular Season/") {
-		t.Fatalf("unexpected relative path: %s", result.RelativePath)
-	}
+	require.NoError(t, err)
+	assert.True(t, result.Updated)
+	_, statErr := os.Stat(oldPath)
+	assert.True(t, os.IsNotExist(statErr), "expected old path removed")
+	_, statErr = os.Stat(result.UpdatedPath)
+	require.NoError(t, statErr)
+	assert.True(t, strings.HasPrefix(filepath.ToSlash(result.RelativePath), "NFL/Season 2024/Regular Season/"))
 }
 
 func TestStartMonitorRunsCycle(t *testing.T) {
@@ -118,17 +85,11 @@ func TestStartMonitorRunsCycle(t *testing.T) {
 
 	root := t.TempDir()
 	manager, err := New(root)
-	if err != nil {
-		t.Fatalf("New error: %v", err)
-	}
+	require.NoError(t, err)
 
 	path := filepath.Join(root, "tmp", "game.mkv")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir error: %v", err)
-	}
-	if err := os.WriteFile(path, []byte("video"), 0o644); err != nil {
-		t.Fatalf("write file: %v", err)
-	}
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte("video"), 0o644))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -151,7 +112,26 @@ func TestStartMonitorRunsCycle(t *testing.T) {
 	}()
 
 	time.Sleep(30 * time.Millisecond)
-	if called == 0 {
-		t.Fatalf("expected monitor cycle callback to be called")
-	}
+	assert.Greater(t, called, 0)
+}
+
+func TestBuildMediaBaseNameAndSeasonHelpers(t *testing.T) {
+	t.Parallel()
+
+	base := BuildMediaBaseName(matcher.Match{
+		GameType:   matcher.GameTypeSuperBowl,
+		GameDate:   "2025-02-09",
+		SeasonYear: "2024",
+		AwayTeam:   "KC",
+		HomeTeam:   "SF",
+		GameWeek:   "SB",
+	})
+	assert.Equal(t, "NFL - 2025-02-09 - KC @ SF - Super Bowl - Week SB", base)
+
+	assert.Equal(t, "2023", deriveSeasonYear("2024-01-07"))
+	assert.Equal(t, "2024", deriveSeasonYear("2024-10-14"))
+	assert.Equal(t, "", deriveSeasonYear("not-a-date"))
+
+	assert.Equal(t, "bad name.mkv", sanitizeFilename("bad///name.mkv"))
+	assert.Equal(t, "", sanitizeFilename("***"))
 }
