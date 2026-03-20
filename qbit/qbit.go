@@ -17,12 +17,22 @@ import (
 const defaultBaseURL = "http://localhost:8080"
 
 var completedStates = map[string]bool{
-	"uploading": true,
-	"stalledUP": true,
-	"pausedUP":  true,
-	"queuedUP":  true,
-	"forcedUP":  true,
+	"uploading":  true,
+	"stalledUP":  true,
+	"pausedUP":   true,
+	"queuedUP":   true,
+	"forcedUP":   true,
 	"checkingUP": true,
+}
+
+// IsCompletedState reports whether a qBittorrent state should be considered complete.
+func IsCompletedState(state string) bool {
+	return completedStates[strings.TrimSpace(state)]
+}
+
+// IsTerminalState reports whether a torrent state/progress should be treated as complete.
+func IsTerminalState(state string, progress float64) bool {
+	return IsCompletedState(state) || progress >= 1
 }
 
 // Client manages connectivity and API calls to qBittorrent.
@@ -166,13 +176,21 @@ func (c *Client) DownloadFromProwlarrReleases(ctx context.Context, releases []pr
 			}
 		}
 
-		jobs = append(jobs, DownloadJob{
-			Release: release,
-			Torrent: torrent,
-		})
+		jobs = append(jobs, DownloadJob{Release: release, Torrent: torrent})
 	}
 
 	return jobs, nil
+}
+
+// ListTorrents returns current torrent entries from qBittorrent.
+func (c *Client) ListTorrents(ctx context.Context) ([]TorrentInfo, error) {
+	if c == nil {
+		return nil, fmt.Errorf("nil qbit client")
+	}
+	if err := c.Login(ctx); err != nil {
+		return nil, err
+	}
+	return c.listTorrents(ctx)
 }
 
 func (c *Client) addTorrentURL(ctx context.Context, downloadURL string, options DownloadOptions) error {
@@ -289,7 +307,7 @@ func (c *Client) waitForCompletion(ctx context.Context, hash string, options Dow
 			if torrent.Hash != hash {
 				continue
 			}
-			if completedStates[torrent.State] || torrent.Progress >= 1 {
+			if IsTerminalState(torrent.State, torrent.Progress) {
 				return torrent, nil
 			}
 		}

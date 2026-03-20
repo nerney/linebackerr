@@ -16,10 +16,21 @@ import (
 const defaultBaseURL = "http://localhost:8081"
 
 var completedStatuses = map[string]bool{
-	"completed": true,
+	"completed":       true,
 	"completed/quick": true,
-	"failed":    true,
-	"deleted":   true,
+	"failed":          true,
+	"deleted":         true,
+}
+
+// IsTerminalStatus reports whether a SABnzbd history status is final.
+func IsTerminalStatus(status string) bool {
+	return completedStatuses[strings.ToLower(strings.TrimSpace(status))]
+}
+
+// IsSuccessfulStatus reports whether a SABnzbd history status should be treated as a successful completion.
+func IsSuccessfulStatus(status string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(status))
+	return normalized == "completed" || normalized == "completed/quick"
 }
 
 // Client manages connectivity and API calls to SABnzbd.
@@ -106,7 +117,7 @@ func (c *Client) DownloadFromProwlarrReleases(ctx context.Context, releases []pr
 	}
 
 	// Verify API connectivity before attempting submissions.
-	if _, err := c.listQueue(ctx); err != nil {
+	if _, err := c.ListQueue(ctx); err != nil {
 		return nil, err
 	}
 
@@ -122,11 +133,7 @@ func (c *Client) DownloadFromProwlarrReleases(ctx context.Context, releases []pr
 			return nil, err
 		}
 
-		job := DownloadJob{
-			Release: release,
-			NZOID:   nzoID,
-		}
-
+		job := DownloadJob{Release: release, NZOID: nzoID}
 		if queue, err := c.waitForQueueEntry(ctx, nzoID, options); err == nil {
 			job.Queue = queue
 		}
@@ -137,13 +144,35 @@ func (c *Client) DownloadFromProwlarrReleases(ctx context.Context, releases []pr
 				return nil, err
 			}
 			job.History = history
-			job.IsSuccessful = strings.EqualFold(history.Status, "completed") || strings.EqualFold(history.Status, "completed/quick")
+			job.IsSuccessful = IsSuccessfulStatus(history.Status)
 		}
 
 		jobs = append(jobs, job)
 	}
 
 	return jobs, nil
+}
+
+// ListQueue returns current SABnzbd queue slots.
+func (c *Client) ListQueue(ctx context.Context) ([]QueueSlot, error) {
+	if c == nil {
+		return nil, fmt.Errorf("nil sabnzbd client")
+	}
+	if strings.TrimSpace(c.APIKey) == "" {
+		return nil, fmt.Errorf("missing sabnzbd api key")
+	}
+	return c.listQueue(ctx)
+}
+
+// ListHistory returns current SABnzbd history slots.
+func (c *Client) ListHistory(ctx context.Context) ([]HistorySlot, error) {
+	if c == nil {
+		return nil, fmt.Errorf("nil sabnzbd client")
+	}
+	if strings.TrimSpace(c.APIKey) == "" {
+		return nil, fmt.Errorf("missing sabnzbd api key")
+	}
+	return c.listHistory(ctx)
 }
 
 func (c *Client) addURL(ctx context.Context, downloadURL string, options DownloadOptions) (string, error) {
@@ -253,7 +282,7 @@ func (c *Client) waitForCompletion(ctx context.Context, nzoID string, options Do
 			if slot.NZOID != nzoID {
 				continue
 			}
-			if completedStatuses[strings.ToLower(slot.Status)] {
+			if IsTerminalStatus(slot.Status) {
 				return slot, nil
 			}
 		}
