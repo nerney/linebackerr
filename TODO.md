@@ -17,14 +17,6 @@ All matching against input strings should be case insensitive. Spaces, dashes, p
 The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
 `MatchCandidate` should also retain the original unaltered input string.
 
-- [ ] **matcher - enrich team aliases from nflverse records and handle ambiguous city matches explicitly**
-  - Review nflverse team records/history and collect all practical team abbreviations and aliases, including alternate abbreviations such as `LAR` for the Rams where supported by the source data.
-  - Enrich the team alias inventory so it covers current abbreviations, historical abbreviations, relocation-era abbreviations, and reasonable city/name variants derived from nflverse data.
-  - Add/adjust tests for enriched alias coverage so examples like Rams/Chargers/Raiders/Washington historical variants are represented clearly.
-  - If a bare city match maps to multiple teams (for example cities shared by multiple franchises), do **not** silently choose one team.
-  - For now, have ambiguous city-only matches produce an explicit error/result that downstream code can detect, and document the behavior in code/tests so we can refine disambiguation later.
-  - Capture any ambiguity tradeoffs in comments so future tasks know which aliases were included vs intentionally rejected.
-
 - [ ] **matcher - implement MatchCandidate extraction pipeline function**
   - Create a pipeline entrypoint that takes a single input string and returns a `MatchCandidate`.
   - Execute stages progressively in order:
@@ -79,6 +71,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **matcher - enrich team aliases from nflverse records and handle ambiguous city matches explicitly**
+  - *Result:* Expanded the nflverse-driven alias inventory with practical alternate abbreviations/history markers (including `LAR`, `NWE`, `SDG`, `RAI`, `WSH`, etc.), kept ambiguous shared-city aliases such as `los angeles`/`la`/`new york` out of direct matching, surfaced them as an explicit `AmbiguousTeamAliasError` for downstream detection, added focused matcher tests for Rams/Chargers/Raiders/Washington coverage plus ambiguous city behavior, and `go test ./...` passes.
 - [x] **matcher - implement home/away team extraction stage**
   - *Result:* Added non-mutating `extractTeamsStage` in `matcher/team_stage.go` that runs the working string through the existing team alias matcher twice, assigning first match to `AwayTeam` and second to `HomeTeam`; added focused tests for mascot aliases, abbreviations, historical aliases, and one-team failure cases; `go test ./...` passes.
 - [x] **matcher - build nflverse-driven team alias inventory**

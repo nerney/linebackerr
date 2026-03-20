@@ -505,7 +505,10 @@ func TestExtractTeamsStage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotAwayTeam, gotHomeTeam, gotNext, gotFound := extractTeamsStage(tt.input)
+			gotAwayTeam, gotHomeTeam, gotNext, gotFound, err := extractTeamsStage(tt.input)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
 			if gotFound != tt.wantFound {
 				t.Fatalf("expected found=%v, got %v", tt.wantFound, gotFound)
 			}
@@ -519,6 +522,29 @@ func TestExtractTeamsStage(t *testing.T) {
 				t.Fatalf("expected next working string %q, got %q", tt.wantNext, gotNext)
 			}
 		})
+	}
+}
+
+func TestExtractTeamsStageReturnsExplicitAmbiguousCityError(t *testing.T) {
+	_, _, gotNext, gotFound, err := extractTeamsStage(normalizeForMatching("NFL Patriots at Los Angeles"))
+	if gotFound {
+		t.Fatalf("expected found=false for ambiguous city match")
+	}
+	if gotNext != "nfl patriots at los angeles" {
+		t.Fatalf("expected unchanged working string, got %q", gotNext)
+	}
+	var ambErr *AmbiguousTeamAliasError
+	if !errors.As(err, &ambErr) {
+		t.Fatalf("expected AmbiguousTeamAliasError, got %v", err)
+	}
+	if ambErr.Alias != "los angeles" {
+		t.Fatalf("expected ambiguous alias %q, got %q", "los angeles", ambErr.Alias)
+	}
+	if !reflect.DeepEqual(ambErr.Teams, []string{"LA", "LAC"}) {
+		t.Fatalf("expected ambiguous teams %v, got %v", []string{"LA", "LAC"}, ambErr.Teams)
+	}
+	if !errors.Is(err, ErrAmbiguousTeamAlias) {
+		t.Fatalf("expected errors.Is(err, ErrAmbiguousTeamAlias) to be true")
 	}
 }
 
@@ -565,9 +591,9 @@ func TestTeamAliasesIncludesHistoricalAndRepresentativeVariants(t *testing.T) {
 		want []string
 	}{
 		{team: "NE", want: []string{"new england patriots", "patriots", "ne"}},
-		{team: "LA", want: []string{"los angeles rams", "st louis rams", "stl"}},
-		{team: "LAC", want: []string{"los angeles chargers", "san diego chargers", "sdg"}},
-		{team: "LV", want: []string{"las vegas raiders", "oakland raiders", "oak"}},
+		{team: "LA", want: []string{"los angeles rams", "st louis rams", "stl", "lar", "ram"}},
+		{team: "LAC", want: []string{"los angeles chargers", "san diego chargers", "sdg", "lach"}},
+		{team: "LV", want: []string{"las vegas raiders", "oakland raiders", "oak", "rai"}},
 		{team: "WAS", want: []string{"washington commanders", "washington football team", "washington redskins", "wsh"}},
 	}
 
@@ -638,6 +664,14 @@ func TestMatchTeamAlias(t *testing.T) {
 			name:      "does not match intentionally ambiguous bare los angeles",
 			input:     "Los Angeles",
 			wantFound: false,
+		},
+		{
+			name:      "matches alternate nflverse style abbreviation",
+			input:     "NFL LAR at NWE",
+			wantTeam:  "LA",
+			wantStart: 1,
+			wantEnd:   2,
+			wantFound: true,
 		},
 	}
 

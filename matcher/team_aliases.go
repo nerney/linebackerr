@@ -1,19 +1,42 @@
 package matcher
 
-import "strings"
+import (
+	"errors"
+	"sort"
+	"strings"
+)
+
+var ErrAmbiguousTeamAlias = errors.New("ambiguous team alias")
+
+// AmbiguousTeamAliasError reports that a bare city/location alias matched more
+// than one franchise, so the matcher intentionally refuses to guess.
+type AmbiguousTeamAliasError struct {
+	Alias string
+	Teams []string
+}
+
+func (e *AmbiguousTeamAliasError) Error() string {
+	return ErrAmbiguousTeamAlias.Error() + ": " + e.Alias + " -> " + strings.Join(e.Teams, ",")
+}
+
+func (e *AmbiguousTeamAliasError) Unwrap() error {
+	return ErrAmbiguousTeamAlias
+}
 
 // teamAliasInventory is a matcher-focused alias set derived from nflverse team
 // names/abbreviations/history where practical.
 //
 // Tradeoffs / ambiguity notes:
-//   - We intentionally skip bare city/location aliases that collide across teams,
-//     such as "new york", "los angeles", and plain "la".
+//   - We intentionally do not treat bare shared-city aliases as direct matches.
+//     Instead, explicit ambiguous aliases such as "los angeles", "la", and
+//     "new york" surface a detectable error so downstream code can decide how
+//     to disambiguate later.
 //   - We keep broad mascot aliases like "giants", "jets", "raiders", etc.
 //     because they are highly representative in release names and currently do
 //     not collide within the NFL.
 //   - We include historical franchise names/abbreviations where nflverse team
-//     history exposes relocations or naming changes (for example STL/LA Rams,
-//     SD/LAC Chargers, OAK/LV Raiders, WFT/Commanders).
+//     history exposes relocations or naming changes (for example STL/STL Rams,
+//     LA/LAR Rams, SD/SDG/LAC Chargers, OAK/RAI/LV Raiders, WSH/WFT/Commanders).
 //   - We prefer current nflverse-style canonical abbreviations as the matcher
 //     output keys: LA, LAC, LV, JAX, WAS, etc.
 var teamAliasInventory = map[string][]string{
@@ -28,27 +51,33 @@ var teamAliasInventory = map[string][]string{
 	"DAL": {"dal", "dallas", "dallas cowboys", "cowboys"},
 	"DEN": {"den", "denver", "denver broncos", "broncos"},
 	"DET": {"det", "detroit", "detroit lions", "lions"},
-	"GB":  {"gb", "green bay", "green bay packers", "packers"},
-	"HOU": {"hou", "houston", "houston texans", "texans"},
-	"IND": {"ind", "indianapolis", "indianapolis colts", "colts"},
-	"JAX": {"jax", "jac", "jacksonville", "jacksonville jaguars", "jaguars"},
+	"GB":  {"gb", "gnb", "green bay", "green bay packers", "packers"},
+	"HOU": {"hou", "htx", "houston", "houston texans", "texans"},
+	"IND": {"ind", "clt", "indianapolis", "indianapolis colts", "colts"},
+	"JAX": {"jax", "jac", "jacksonville", "jacksonville jaguars", "jax jaguars", "jaguars"},
 	"KC":  {"kc", "kan", "kansas city", "kansas city chiefs", "chiefs"},
-	"LA":  {"la rams", "los angeles rams", "st louis rams", "st. louis rams", "st louis", "stl", "rams"},
-	"LAC": {"lac", "la chargers", "los angeles chargers", "san diego chargers", "san diego", "sd", "sdg", "chargers"},
-	"LV":  {"lv", "las vegas raiders", "oakland raiders", "oakland", "oak", "raiders"},
+	"LA":  {"la rams", "lar", "larm", "los angeles rams", "st louis rams", "st. louis rams", "st louis", "stl", "ram", "rams"},
+	"LAC": {"lac", "lach", "la chargers", "los angeles chargers", "san diego chargers", "san diego", "sd", "sdg", "chargers"},
+	"LV":  {"lv", "lvr", "las vegas raiders", "oakland raiders", "oakland", "oak", "rai", "raiders"},
 	"MIA": {"mia", "miami", "miami dolphins", "dolphins"},
 	"MIN": {"min", "minnesota", "minnesota vikings", "vikings"},
-	"NE":  {"ne", "new england", "new england patriots", "patriots"},
-	"NO":  {"no", "new orleans", "new orleans saints", "saints"},
+	"NE":  {"ne", "nwe", "new england", "new england patriots", "patriots"},
+	"NO":  {"no", "nor", "new orleans", "new orleans saints", "saints"},
 	"NYG": {"nyg", "new york giants", "ny giants", "giants"},
 	"NYJ": {"nyj", "new york jets", "ny jets", "jets"},
 	"PHI": {"phi", "philadelphia", "philadelphia eagles", "eagles"},
 	"PIT": {"pit", "pittsburgh", "pittsburgh steelers", "steelers"},
 	"SEA": {"sea", "seattle", "seattle seahawks", "seahawks"},
-	"SF":  {"sf", "san francisco", "san francisco 49ers", "49ers", "forty niners"},
-	"TB":  {"tb", "tampa bay", "tampa bay buccaneers", "bucs", "buccaneers"},
-	"TEN": {"ten", "tennessee", "tennessee titans", "titans"},
-	"WAS": {"was", "wsh", "washington", "washington commanders", "washington football team", "washington redskins", "commanders", "redskins"},
+	"SF":  {"sf", "sfo", "san francisco", "san francisco 49ers", "49ers", "forty niners"},
+	"TB":  {"tb", "tam", "tampa bay", "tampa bay buccaneers", "bucs", "buccaneers"},
+	"TEN": {"ten", "oti", "tennessee", "tennessee titans", "titans"},
+	"WAS": {"was", "wsh", "washington", "washington commanders", "washington football team", "washington redskins", "was commanders", "was football team", "commanders", "redskins"},
+}
+
+var ambiguousTeamAliases = map[string][]string{
+	"la":          {"LA", "LAC"},
+	"los angeles": {"LA", "LAC"},
+	"new york":    {"NYG", "NYJ"},
 }
 
 var teamAliasLookup = buildTeamAliasLookup(teamAliasInventory)
@@ -130,4 +159,44 @@ func matchTeamAlias(tokens []string) (team string, start int, end int, found boo
 	}
 
 	return team, start, end, found
+}
+
+func detectAmbiguousTeamAlias(tokens []string) error {
+	bestAlias := ""
+	bestStart := len(tokens)
+	var bestTeams []string
+
+	for alias, teams := range ambiguousTeamAliases {
+		aliasTokens := strings.Fields(alias)
+		plen := len(aliasTokens)
+		if plen == 0 || plen > len(tokens) {
+			continue
+		}
+
+		for i := 0; i+plen <= len(tokens); i++ {
+			matched := true
+			for j := 0; j < plen; j++ {
+				if tokens[i+j] != aliasTokens[j] {
+					matched = false
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+
+			if plen > len(strings.Fields(bestAlias)) || (plen == len(strings.Fields(bestAlias)) && i < bestStart) {
+				bestAlias = alias
+				bestStart = i
+				bestTeams = append([]string(nil), teams...)
+			}
+		}
+	}
+
+	if bestAlias == "" {
+		return nil
+	}
+
+	sort.Strings(bestTeams)
+	return &AmbiguousTeamAliasError{Alias: bestAlias, Teams: bestTeams}
 }
