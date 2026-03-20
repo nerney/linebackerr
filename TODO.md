@@ -7,14 +7,6 @@
 - When a subagent finishes, record the result here and move the task to Completed.
 
 ## Active Tasks (In Progress)
-- [ ] **matcher - implement GameWeek extraction stage**
-  - Gameplan:
-    - support week/w/wk numeric patterns
-    - support Super Bowl roman numeral extraction when appropriate
-    - remove matched week token from working string
-    - add numeric + roman numeral coverage
-  - *Status:* Queued / promoted, not started
-
 - [ ] **matcher - build nflverse-driven team alias inventory**
   - Gameplan:
     - build alias sets from nflverse names/abbreviations/history where practical
@@ -49,14 +41,48 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Update the existing matcher package flow that processes arrays of release strings so it calls the new single-string pipeline function.
   - Add tests using real examples from `files.txt`.
 
-- [ ] **matcher - add ValidateMatch on MatchCandidate**
-  - Add only the skeleton for a `ValidateMatch` function/method that takes a `MatchCandidate` and returns a `Match`.
-  - Do **not** implement the detailed validation/resolution logic yet.
-  - This will eventually use nflverse extensively, but for this task we only want the shape/scaffolding.
-  - Add minimal tests for the skeleton only.
-  - We will break validation stages into separate tasks later.
+- [ ] **matcher - add Validate() entrypoint on MatchCandidate**
+  - Add the entrypoint:
+    - `func (mc MatchCandidate) Validate() Match`
+  - For now, keep this task focused on wiring the method/entrypoint shape and connecting it to a staged validation pipeline.
+  - Add only minimal scaffolding/tests if needed; detailed stage behavior should be implemented in separate tasks below.
+
+- [ ] **matcher validation - stage 1: exact GameDate + teams nflverse lookup**
+  - If `GameDate` is set, search nflverse for games on that date.
+  - If a game exists on that date with matching `HomeTeam` and `AwayTeam`, populate and return a `Match` with nflverse data.
+  - Add a code comment / TODO noting future fallback handling if the exact date+teams lookup fails.
+  - If not matched, continue to the next validation stage.
+
+- [ ] **matcher validation - stage 2: regular season early failure rule**
+  - If `GameType == RS` and `GameDate` was not set (the date stage already had its chance), fail validation here with an error.
+  - Add focused tests for this failure path.
+
+- [ ] **matcher validation - stage 3: Super Bowl roman numeral lookup**
+  - If `GameType == SB` and `GameWeek` contains a Roman numeral, search nflverse using that signal.
+  - If found, return a positive match.
+  - Add focused tests around the roman numeral path.
+
+- [ ] **matcher validation - stage 4: GameType + SeasonYear + teams nflverse lookup**
+  - Search nflverse by `GameType`, `SeasonYear`, and participating teams.
+  - For example: `CON`, `YYYY`, `HomeTeam`, `AwayTeam` should all match.
+  - If required fields are missing at this point, return an error.
+  - Add focused tests for successful and missing-field/error cases.
+
+- [ ] **matcher validation - populate Match from nflverse result**
+  - Centralize how a matched nflverse game populates the final `Match` object.
+  - Reuse this population logic across validation stages.
+  - Add focused tests for field population.
+
+- [ ] **matcher validation - final pipeline return / unmatched handling**
+  - If validation reaches the end without finding a match, return a `Match` with all `MatchCandidate` values copied over, `NflverseID` unset/zero, and `Error` populated.
+  - The caller will distinguish success/failure from the returned `Match`.
+  - Consider whether a derived `Matched` field/helper should exist, based on:
+    - `err == nil && nflverse_id != 0`
+  - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **matcher - implement GameWeek extraction stage**
+  - *Result:* Added `extractGameWeekStage` with numeric support for `week.#`, `week.##`, `w#`, `w##`, `wk.#`, and `wk.##`, plus valid Roman numeral extraction only for `GameType == SB`; matched week tokens are removed from the working string before downstream stages; added focused numeric and Super Bowl Roman numeral tests; `go test ./...` passes.
 - [x] **matcher - implement GameType extraction stage**
   - *Result:* Added non-mutating `extractGameTypeStage` with case-insensitive mappings for `sb`/`super.bowl`/`superbowl` => `SB`, `conference`/`con`/`championship` => `CON`, `div`/`division`/`divisional` => `DIV`, `wc`/`wildcard`/`wild.card` => `WC`, and regular-season default to `RS`; added focused matcher tests for each mapping; `go test ./...` passes.
 - [x] **matcher - implement SeasonYear extraction/derivation stage**

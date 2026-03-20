@@ -364,6 +364,104 @@ func TestExtractGameTypeStage(t *testing.T) {
 	}
 }
 
+func TestExtractGameWeekStage(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		gameType     GameType
+		wantGameWeek string
+		wantNext     string
+		wantFound    bool
+	}{
+		{
+			name:         "extract week number from separated week token",
+			input:        normalizeForMatching("NFL Week 2 Patriots at Jets"),
+			wantGameWeek: "2",
+			wantNext:     "nfl patriots at jets",
+			wantFound:    true,
+		},
+		{
+			name:         "extract week number from compact week token",
+			input:        normalizeForMatching("NFL Week18 Bills at Dolphins"),
+			wantGameWeek: "18",
+			wantNext:     "nfl bills at dolphins",
+			wantFound:    true,
+		},
+		{
+			name:         "extract week number from compact wk token",
+			input:        normalizeForMatching("NFL.WK18.Bills.at.Dolphins"),
+			wantGameWeek: "18",
+			wantNext:     "nfl bills at dolphins",
+			wantFound:    true,
+		},
+		{
+			name:         "extract week number from compact w token",
+			input:        normalizeForMatching("NFL w7 Chiefs at Raiders"),
+			wantGameWeek: "7",
+			wantNext:     "nfl chiefs at raiders",
+			wantFound:    true,
+		},
+		{
+			name:         "extract week number from double digit compact w token",
+			input:        normalizeForMatching("NFL w18 Ravens at Bengals"),
+			wantGameWeek: "18",
+			wantNext:     "nfl ravens at bengals",
+			wantFound:    true,
+		},
+		{
+			name:         "extract super bowl roman numeral after super bowl alias",
+			input:        normalizeForMatching("NFL Super Bowl lix Chiefs vs Eagles"),
+			gameType:     GameTypeSuperBowl,
+			wantGameWeek: "LIX",
+			wantNext:     "nfl super bowl chiefs vs eagles",
+			wantFound:    true,
+		},
+		{
+			name:         "extract super bowl roman numeral after sb alias",
+			input:        normalizeForMatching("NFL SB xlviii Seahawks vs Broncos"),
+			gameType:     GameTypeSuperBowl,
+			wantGameWeek: "XLVIII",
+			wantNext:     "nfl sb seahawks vs broncos",
+			wantFound:    true,
+		},
+		{
+			name:      "invalid super bowl roman numeral is ignored",
+			input:     normalizeForMatching("NFL Super Bowl iix Chiefs vs Eagles"),
+			gameType:  GameTypeSuperBowl,
+			wantNext:  "nfl super bowl iix chiefs vs eagles",
+			wantFound: false,
+		},
+		{
+			name:      "roman numeral without super bowl alias is ignored",
+			input:     normalizeForMatching("NFL IX Chiefs at Raiders"),
+			gameType:  GameTypeRegularSeason,
+			wantNext:  "nfl ix chiefs at raiders",
+			wantFound: false,
+		},
+		{
+			name:      "no week token leaves working string unchanged",
+			input:     normalizeForMatching("NFL Patriots at Jets"),
+			wantNext:  "nfl patriots at jets",
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotGameWeek, gotNext, gotFound := extractGameWeekStage(tt.input, tt.gameType)
+			if gotFound != tt.wantFound {
+				t.Fatalf("expected found=%v, got %v", tt.wantFound, gotFound)
+			}
+			if gotGameWeek != tt.wantGameWeek {
+				t.Fatalf("expected game week %q, got %q", tt.wantGameWeek, gotGameWeek)
+			}
+			if gotNext != tt.wantNext {
+				t.Fatalf("expected next working string %q, got %q", tt.wantNext, gotNext)
+			}
+		})
+	}
+}
+
 func TestNormalizeForMatch(t *testing.T) {
 	input := "NFL__2018...Super---Bowl__Patriots-vs-Rams"
 	got := NormalizeForMatch(input)
