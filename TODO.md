@@ -10,24 +10,15 @@
 
 ## Active Tasks (In Progress)
 
-- [ ] **matcher - add Validate() entrypoint on MatchCandidate**
-  - Status: In progress. Subagent started to wire the method and validation pipeline.
-  - Gameplan:
-    1. Define `func (mc MatchCandidate) Validate() Match` in `matcher/matcher.go`.
-    2. Create a private `validationPipeline` to hold the stages.
-    3. Add a basic test to ensure the entrypoint returns a `Match`.
+- [ ] **matcher validation - stage 2: regular season early failure rule**
+  - *Status:* Subagent starting work.
+  - *Gameplan:*
+    1. Implement a new validation stage (or update existing pipeline) to check for `RS` game type without a `GameDate`.
+    2. Define a specific error for this failure.
+    3. Add tests in `matcher/matcher_test.go` to verify the failure.
 
 ## Backlog (Upcoming)
 
-- [ ] **matcher validation - stage 1: exact GameDate + teams nflverse lookup**
-  - If `GameDate` is set, search nflverse for games on that date.
-  - If a game exists on that date with matching `HomeTeam` and `AwayTeam`, populate and return a `Match` with nflverse data.
-  - Add a code comment / TODO noting future fallback handling if the exact date+teams lookup fails.
-  - If not matched, continue to the next validation stage.
-
-- [ ] **matcher validation - stage 2: regular season early failure rule**
-  - If `GameType == RS` and `GameDate` was not set (the date stage already had its chance), fail validation here with an error.
-  - Add focused tests for this failure path.
 
 - [ ] **matcher validation - stage 3: Super Bowl roman numeral lookup**
   - If `GameType == SB` and `GameWeek` contains a Roman numeral, search nflverse using that signal.
@@ -53,6 +44,8 @@
   - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **matcher validation - stage 1: exact GameDate + teams nflverse lookup**
+  - *Result:* Implemented `nflverseLookupStage` in `matcher/nflverse_lookup_stage.go` which queries the `nflverse_games` table for an exact `GameDate` and participating teams (handling either home/away order). Wired this stage into `validatePipeline` in `matcher/match_candidate.go`. Added focused tests in `matcher/matcher_test.go` verifying successful lookups, team swaps, and no-match scenarios; `go test ./matcher/...` passes.
 - [x] **matcher - add Validate() entrypoint on MatchCandidate**
   - *Result:* Added `func (mc MatchCandidate) Validate() Match` plus a private validation-pipeline scaffold that currently returns a `Match` populated from the candidate fields, and added a focused matcher test verifying the entrypoint shape; matcher tests also now expect postseason array parsing to emit season-based labels like `2021.Wildcard`; `go test ./...` passes.
 - [x] **matcher - expand array-based matcher flow to use pipeline**

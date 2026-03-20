@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"linebackerr/db"
 )
 
 func TestPipeline(t *testing.T) {
@@ -843,3 +845,138 @@ func TestMatchCandidate_Validate(t *testing.T) {
 		t.Errorf("Expected HomeTeam %s, got %s", mc.HomeTeam, match.HomeTeam)
 	}
 }
+
+func TestMatchCandidate_Validate_EarlyFailureRules(t *testing.T) {
+	tests := []struct {
+		name      string
+		candidate MatchCandidate
+		wantErr   error
+	}{
+		{
+			name: "Regular season missing date fails early",
+			candidate: MatchCandidate{
+				GameType: GameTypeRegularSeason,
+				GameDate: "",
+			},
+			wantErr: ErrMissingDateForRegularSeason,
+		},
+		{
+			name: "Regular season with date passes early check",
+			candidate: MatchCandidate{
+				GameType: GameTypeRegularSeason,
+				GameDate: "2024-12-15",
+			},
+			wantErr: nil,
+		},
+		{
+			name: "Postseason without date passes early check (other stages might resolve it)",
+			candidate: MatchCandidate{
+				GameType: GameTypeSuperBowl,
+				GameDate: "",
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			match := tt.candidate.Validate()
+			if !errors.Is(match.Error, tt.wantErr) {
+				t.Fatalf("expected error %v, got %v", tt.wantErr, match.Error)
+			}
+		})
+	}
+}
+
+func TestNflverseLookupStage(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("LINEBACKERR_DATA_DIR", dataDir)
+
+	database := db.Init()
+	defer database.Close()
+
+	// Ensure nflverse tables exist for test
+	_, err := database.Exec(`CREATE TABLE nflverse_teams (id TEXT PRIMARY KEY, abbr TEXT, full_name TEXT)`)
+	if err != nil {
+		t.Fatalf("Failed to create nflverse_teams: %v", err)
+	}
+	_, err = database.Exec(`CREATE TABLE nflverse_games (game_id TEXT PRIMARY KEY, season INTEGER, week INTEGER, gameday TEXT, away_team_id TEXT, home_team_id TEXT)`)
+	if err != nil {
+		t.Fatalf("Failed to create nflverse_games: %v", err)
+	}
+
+	// Setup mock data in nflverse tables
+	_, err = database.Exec(`INSERT INTO nflverse_teams (id, abbr, full_name) VALUES ('NE_ID', 'NE', 'New England Patriots'), ('NYJ_ID', 'NYJ', 'New York Jets')`)
+	if err != nil {
+		t.Fatalf("Failed to setup test teams: %v", err)
+	}
+
+	_, err = database.Exec(`INSERT INTO nflverse_games (game_id, season, week, gameday, away_team_id, home_team_id) VALUES ('2021_02_NE_NYJ', 2021, 2, '2021-09-19', 'NE_ID', 'NYJ_ID')`)
+	if err != nil {
+		t.Fatalf("Failed to setup test games: %v", err)
+	}
+
+	tests := []struct {
+		name           string
+		match          Match
+		wantNflverseID string
+	}{
+		{
+			name: "Exact match found",
+			match: Match{
+				GameDate: "2021-09-19",
+				AwayTeam: "NE",
+				HomeTeam: "NYJ",
+			},
+			wantNflverseID: "2021_02_NE_NYJ",
+		},
+		{
+			name: "Match found with teams swapped in input (Home/Away mismatch)",
+			match: Match{
+				GameDate: "2021-09-19",
+				AwayTeam: "NYJ",
+				HomeTeam: "NE",
+			},
+			wantNflverseID: "2021_02_NE_NYJ",
+		},
+		{
+			name: "No match - different date",
+			match: Match{
+				GameDate: "2021-09-20",
+				AwayTeam: "NE",
+				HomeTeam: "NYJ",
+			},
+			wantNflverseID: "",
+		},
+		{
+			name: "No match - different team",
+			match: Match{
+				GameDate: "2021-09-19",
+				AwayTeam: "BUF",
+				HomeTeam: "NYJ",
+			},
+			wantNflverseID: "",
+		},
+		{
+			name: "Incomplete match candidate - missing date",
+			match: Match{
+				AwayTeam: "NE",
+				HomeTeam: "NYJ",
+			},
+			wantNflverseID: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := nflverseLookupStage(database, &tt.match)
+			if err != nil {
+				t.Fatalf("nflverseLookupStage returned error: %v", err)
+			}
+			if tt.match.NflverseID != tt.wantNflverseID {
+				t.Errorf("got NflverseID %q, want %q", tt.match.NflverseID, tt.wantNflverseID)
+			}
+		})
+	}
+}
+

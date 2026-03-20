@@ -1,5 +1,14 @@
 package matcher
 
+import (
+	"errors"
+	"linebackerr/db"
+)
+
+var (
+	ErrMissingDateForRegularSeason = errors.New("regular season game requires a date for validation")
+)
+
 // GameType identifies the NFL game stage for matching.
 type GameType string
 
@@ -30,9 +39,7 @@ func (mc MatchCandidate) Validate() Match {
 }
 
 func (mc MatchCandidate) validatePipeline() Match {
-	// For now, this is just a pass-through that copies fields.
-	// Future tasks will add stages to this pipeline.
-	return Match{
+	match := Match{
 		OriginalInput: mc.OriginalInput,
 		GameType:      mc.GameType,
 		GameDate:      mc.GameDate,
@@ -41,6 +48,19 @@ func (mc MatchCandidate) validatePipeline() Match {
 		AwayTeam:      mc.AwayTeam,
 		HomeTeam:      mc.HomeTeam,
 	}
+
+	if match.GameType == GameTypeRegularSeason && match.GameDate == "" {
+		match.Error = ErrMissingDateForRegularSeason
+		return match
+	}
+
+	if db.DB != nil {
+		if err := nflverseLookupStage(db.DB, &match); err != nil {
+			match.Error = err
+		}
+	}
+
+	return match
 }
 
 // Match is a resolved game match record. It carries all candidate fields plus
