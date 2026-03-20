@@ -462,6 +462,66 @@ func TestExtractGameWeekStage(t *testing.T) {
 	}
 }
 
+func TestExtractTeamsStage(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantAwayTeam string
+		wantHomeTeam string
+		wantNext     string
+		wantFound    bool
+	}{
+		{
+			name:         "extract mascot aliases in away-home order",
+			input:        normalizeForMatching("NFL Patriots.at.Browns.1080p"),
+			wantAwayTeam: "NE",
+			wantHomeTeam: "CLE",
+			wantNext:     "nfl patriots at browns 1080p",
+			wantFound:    true,
+		},
+		{
+			name:         "extract abbreviation aliases in away-home order",
+			input:        normalizeForMatching("NFL.NE.at.NYJ.mkv"),
+			wantAwayTeam: "NE",
+			wantHomeTeam: "NYJ",
+			wantNext:     "nfl ne at nyj mkv",
+			wantFound:    true,
+		},
+		{
+			name:         "extract historical franchise aliases",
+			input:        normalizeForMatching("NFL.St.Louis.Rams.at.San.Diego.Chargers"),
+			wantAwayTeam: "LA",
+			wantHomeTeam: "LAC",
+			wantNext:     "nfl st louis rams at san diego chargers",
+			wantFound:    true,
+		},
+		{
+			name:      "single matched team is not enough",
+			input:     normalizeForMatching("NFL Patriots highlights"),
+			wantNext:  "nfl patriots highlights",
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotAwayTeam, gotHomeTeam, gotNext, gotFound := extractTeamsStage(tt.input)
+			if gotFound != tt.wantFound {
+				t.Fatalf("expected found=%v, got %v", tt.wantFound, gotFound)
+			}
+			if gotAwayTeam != tt.wantAwayTeam {
+				t.Fatalf("expected away team %q, got %q", tt.wantAwayTeam, gotAwayTeam)
+			}
+			if gotHomeTeam != tt.wantHomeTeam {
+				t.Fatalf("expected home team %q, got %q", tt.wantHomeTeam, gotHomeTeam)
+			}
+			if gotNext != tt.wantNext {
+				t.Fatalf("expected next working string %q, got %q", tt.wantNext, gotNext)
+			}
+		})
+	}
+}
+
 func TestNormalizeForMatch(t *testing.T) {
 	input := "NFL__2018...Super---Bowl__Patriots-vs-Rams"
 	got := NormalizeForMatch(input)
