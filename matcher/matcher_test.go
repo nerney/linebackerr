@@ -6,6 +6,76 @@ import (
 	"testing"
 )
 
+func TestPipeline(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		wantCandidate MatchCandidate
+	}{
+		{
+			name:  "Regular Season with Date and Week",
+			input: "NFL.2021-09-19.Week.2.NE.at.NYJ.mkv",
+			wantCandidate: MatchCandidate{
+				OriginalInput: "NFL.2021-09-19.Week.2.NE.at.NYJ.mkv",
+				GameType:      GameTypeRegularSeason,
+				GameDate:      "2021-09-19",
+				GameWeek:      "2",
+				SeasonYear:    "2021",
+				AwayTeam:      "NE",
+				HomeTeam:      "NYJ",
+			},
+		},
+		{
+			name:  "Super Bowl with Year and Roman Numeral",
+			input: "NFL.2023.Super.Bowl.LVII.Chiefs.vs.Eagles",
+			wantCandidate: MatchCandidate{
+				OriginalInput: "NFL.2023.Super.Bowl.LVII.Chiefs.vs.Eagles",
+				GameType:      GameTypeSuperBowl,
+				GameDate:      "",
+				GameWeek:      "LVII",
+				SeasonYear:    "2023",
+				AwayTeam:      "KC",
+				HomeTeam:      "PHI",
+			},
+		},
+		{
+			name:  "Wildcard Game in January (Season Year Decentered)",
+			input: "NFL.2022-01-15.Wild.Card.BAL.at.BUF",
+			wantCandidate: MatchCandidate{
+				OriginalInput: "NFL.2022-01-15.Wild.Card.BAL.at.BUF",
+				GameType:      GameTypeWildcard,
+				GameDate:      "2022-01-15",
+				GameWeek:      "",
+				SeasonYear:    "2021",
+				AwayTeam:      "BAL",
+				HomeTeam:      "BUF",
+			},
+		},
+		{
+			name:  "Regular Season Compact Date and Week",
+			input: "NFL_20181216_w15_Patriots_at_Steelers",
+			wantCandidate: MatchCandidate{
+				OriginalInput: "NFL_20181216_w15_Patriots_at_Steelers",
+				GameType:      GameTypeRegularSeason,
+				GameDate:      "2018-12-16",
+				GameWeek:      "15",
+				SeasonYear:    "2018",
+				AwayTeam:      "NE",
+				HomeTeam:      "PIT",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Pipeline(tt.input)
+			if !reflect.DeepEqual(got, tt.wantCandidate) {
+				t.Fatalf("Pipeline(%q)\ngot:  %+v\nwant: %+v", tt.input, got, tt.wantCandidate)
+			}
+		})
+	}
+}
+
 func TestMatchCandidateFields(t *testing.T) {
 	candidate := MatchCandidate{
 		OriginalInput: "NFL.2021-09-19.S2021E002.NE.at.NYJ.mkv",
