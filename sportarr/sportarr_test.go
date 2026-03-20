@@ -76,7 +76,8 @@ func TestLoadTeamsStoresLookupData(t *testing.T) {
 		},
 	})
 
-	if err := LoadTeams(db); err != nil {
+	client := &Client{DB: db}
+	if err := client.LoadTeams(); err != nil {
 		t.Fatalf("LoadTeams: %v", err)
 	}
 
@@ -117,7 +118,8 @@ func TestLoadSeasonsStoresMainAndScrapedPosters(t *testing.T) {
 		},
 	})
 
-	if err := LoadSeasons(db); err != nil {
+	client := &Client{DB: db}
+	if err := client.LoadSeasons(); err != nil {
 		t.Fatalf("LoadSeasons: %v", err)
 	}
 

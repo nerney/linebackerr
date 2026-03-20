@@ -2,43 +2,76 @@ package db
 
 import (
 	"database/sql"
+	"os"
 	"testing"
-	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func TestDBInitAndSync(t *testing.T) {
-	var err error
-	DB, err = sql.Open("sqlite3", "file::memory:?cache=shared")
+func TestInitResetsDatabaseAndBuildsSchema(t *testing.T) {
+	t.Setenv("LINEBACKERR_DATA_DIR", t.TempDir())
+
+	first := Init()
+	if first == nil {
+		t.Fatal("Init returned nil db")
+	}
+	t.Cleanup(func() { _ = first.Close() })
+
+	if _, err := first.Exec(`INSERT INTO sportarr_seasons (year, poster_url) VALUES ('2024', 'poster')`); err != nil {
+		t.Fatalf("seed row: %v", err)
+	}
+
+	var count int
+	if err := first.QueryRow(`SELECT COUNT(*) FROM sportarr_seasons`).Scan(&count); err != nil {
+		t.Fatalf("count seeded rows: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 seeded row, got %d", count)
+	}
+
+	if err := first.Close(); err != nil {
+		t.Fatalf("close first db: %v", err)
+	}
+
+	second := Init()
+	if second == nil {
+		t.Fatal("second Init returned nil db")
+	}
+
+	for _, table := range []string{"sportarr_team", "sportarr_seasons"} {
+		var name string
+		if err := second.QueryRow(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&name); err != nil {
+			t.Fatalf("table %s missing after reset: %v", table, err)
+		}
+	}
+
+	if err := second.QueryRow(`SELECT COUNT(*) FROM sportarr_seasons`).Scan(&count); err != nil {
+		t.Fatalf("count rows after reset: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected clean-slate sportarr_seasons after reset, got %d rows", count)
+	}
+
+	if _, err := os.Stat(DBPath()); err != nil {
+		t.Fatalf("expected db file at %s: %v", DBPath(), err)
+	}
+}
+
+func TestInitSchemaBuildsTablesOnProvidedDB(t *testing.T) {
+	db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
 	if err != nil {
 		t.Fatalf("failed to open memory db: %v", err)
 	}
-	defer DB.Close()
+	defer db.Close()
 
-	if err := initSchema(); err != nil {
+	if err := initSchema(db); err != nil {
 		t.Fatalf("failed to init schema: %v", err)
 	}
 
-	if !NeedsSync("test_module") {
-		t.Error("Expected true for new module")
-	}
-
-	if err := UpdateSync("test_module"); err != nil {
-		t.Errorf("Failed to update sync: %v", err)
-	}
-
-	if NeedsSync("test_module") {
-		t.Error("Expected false after update")
-	}
-
-	oldTime := time.Now().Add(-50 * time.Hour)
-	_, err = DB.Exec("UPDATE sync_state SET last_sync = ? WHERE module = ?", oldTime, "test_module")
-	if err != nil {
-		t.Fatalf("Failed to update time: %v", err)
-	}
-
-	if !NeedsSync("test_module") {
-		t.Error("Expected true after 50 hours")
+	for _, table := range []string{"sportarr_team", "sportarr_seasons"} {
+		var name string
+		if err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&name); err != nil {
+			t.Fatalf("table %s missing: %v", table, err)
+		}
 	}
 }
