@@ -7,14 +7,6 @@
 - When a subagent finishes, record the result here and move the task to Completed.
 
 ## Active Tasks (In Progress)
-- [ ] **matcher - implement GameType extraction stage**
-  - Gameplan:
-    - map postseason aliases to `SB`, `CON`, `DIV`, `WC`
-    - default to `RS`
-    - keep this stage non-mutating
-    - add focused mapping tests
-  - *Status:* Queued / promoted, not started
-
 - [ ] **matcher - implement GameWeek extraction stage**
   - Gameplan:
     - support week/w/wk numeric patterns
@@ -57,7 +49,16 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Update the existing matcher package flow that processes arrays of release strings so it calls the new single-string pipeline function.
   - Add tests using real examples from `files.txt`.
 
+- [ ] **matcher - add ValidateMatch on MatchCandidate**
+  - Add only the skeleton for a `ValidateMatch` function/method that takes a `MatchCandidate` and returns a `Match`.
+  - Do **not** implement the detailed validation/resolution logic yet.
+  - This will eventually use nflverse extensively, but for this task we only want the shape/scaffolding.
+  - Add minimal tests for the skeleton only.
+  - We will break validation stages into separate tasks later.
+
 ## Completed
+- [x] **matcher - implement GameType extraction stage**
+  - *Result:* Added non-mutating `extractGameTypeStage` with case-insensitive mappings for `sb`/`super.bowl`/`superbowl` => `SB`, `conference`/`con`/`championship` => `CON`, `div`/`division`/`divisional` => `DIV`, `wc`/`wildcard`/`wild.card` => `WC`, and regular-season default to `RS`; added focused matcher tests for each mapping; `go test ./...` passes.
 - [x] **matcher - implement SeasonYear extraction/derivation stage**
   - *Result:* Added `extractSeasonYearStage` to derive `SeasonYear` from `GameDate` (with Jan/Feb rolling back to the prior season), otherwise extract a standalone season-year token from the normalized working string and remove it for downstream stages; added focused matcher tests for date-derived and direct extraction cases, and `go test ./...` passes.
 - [x] **matcher - implement GameDate extraction stage**

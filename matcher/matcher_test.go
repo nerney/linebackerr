@@ -303,6 +303,67 @@ func TestExtractSeasonYearStage(t *testing.T) {
 	}
 }
 
+func TestExtractGameTypeStage(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantGameType GameType
+		wantNext     string
+		wantFound    bool
+	}{
+		{
+			name:         "super bowl aliases map to sb",
+			input:        normalizeForMatching("NFL.super.bowl.SB.SuperBowl"),
+			wantGameType: GameTypeSuperBowl,
+			wantNext:     "nfl super bowl sb superbowl",
+			wantFound:    true,
+		},
+		{
+			name:         "conference aliases map to con",
+			input:        normalizeForMatching("NFL.conference.CON.championship"),
+			wantGameType: GameTypeConference,
+			wantNext:     "nfl conference con championship",
+			wantFound:    true,
+		},
+		{
+			name:         "divisional aliases map to div",
+			input:        normalizeForMatching("NFL.div.division.divisional"),
+			wantGameType: GameTypeDivisional,
+			wantNext:     "nfl div division divisional",
+			wantFound:    true,
+		},
+		{
+			name:         "wildcard aliases map to wc",
+			input:        normalizeForMatching("NFL.wc.wildcard.wild.card"),
+			wantGameType: GameTypeWildcard,
+			wantNext:     "nfl wc wildcard wild card",
+			wantFound:    true,
+		},
+		{
+			name:         "unknown game type defaults to regular season without mutating",
+			input:        normalizeForMatching("NFL Patriots at Jets"),
+			wantGameType: GameTypeRegularSeason,
+			wantNext:     "nfl patriots at jets",
+			wantFound:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotGameType, gotNext, gotFound := extractGameTypeStage(tt.input)
+			if gotFound != tt.wantFound {
+				t.Fatalf("expected found=%v, got %v", tt.wantFound, gotFound)
+			}
+			if gotGameType != tt.wantGameType {
+				t.Fatalf("expected game type %q, got %q", tt.wantGameType, gotGameType)
+			}
+			if gotNext != tt.wantNext {
+				t.Fatalf("expected next working string %q, got %q", tt.wantNext, gotNext)
+			}
+		})
+	}
+}
+
 func TestNormalizeForMatch(t *testing.T) {
 	input := "NFL__2018...Super---Bowl__Patriots-vs-Rams"
 	got := NormalizeForMatch(input)
