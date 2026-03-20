@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: Linebackerr API
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      description: Returns an OK status when the service is healthy.
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    example: ok
