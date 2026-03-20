@@ -5,7 +5,6 @@ RUN go mod download
 COPY . .
 RUN apk add --no-cache gcc musl-dev
 RUN CGO_ENABLED=1 go build -o linebackerr .
-RUN go test ./... || true
 
 FROM alpine:latest
 WORKDIR /app

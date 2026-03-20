@@ -25,10 +25,7 @@ func Init() *sql.DB {
 	}
 
 	dbPath := filepath.Join(dataDir, dbFileName)
-	fmt.Printf("Resetting SQLite database at %s...\n", dbPath)
-	if err := os.Remove(dbPath); err != nil && !os.IsNotExist(err) {
-		panic(fmt.Errorf("failed to reset linebackerr db: %w", err))
-	}
+	fmt.Printf("Initializing SQLite database at %s...\n", dbPath)
 
 	var err error
 	DB, err = sql.Open("sqlite3", dbPath)
