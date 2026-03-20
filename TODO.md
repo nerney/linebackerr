@@ -10,10 +10,6 @@
 
 ## Active Tasks (In Progress)
 
-- [ ] **matcher - expand array-based matcher flow to use pipeline** (In Progress - Subagent Started)
-  - Update the existing matcher package flow that processes arrays of release strings so it calls the new single-string pipeline function.
-  - Add tests using real examples from `files.txt`.
-
 ## Backlog (Upcoming)
 
 - [ ] **matcher - add Validate() entrypoint on MatchCandidate**
@@ -56,6 +52,8 @@
   - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **matcher - expand array-based matcher flow to use pipeline**
+  - *Result:* Updated `ParseReleases` in `matcher/matcher.go` to use the `Pipeline` function for each release string; added logic to format the output as `Year.PostseasonType` for postseason games or `YYYY-MM-DD` for games with a date match, falling back to the original string if no NFL match is found; `go test ./...` passes.
 - [x] **matcher - implement MatchCandidate extraction pipeline function**
   - *Result:* Created `Pipeline(input string) MatchCandidate` in `matcher/matcher.go` that executes GameDate, SeasonYear, GameType, GameWeek, and Away/Home team extraction stages in order; added `TestPipeline` in `matcher/matcher_test.go` covering varied release strings (regular season, Super Bowl with Roman numerals, January season-year rollover); `go test ./matcher/...` passes.
 - [x] **bootstrap flow - refactor init wiring, remove sync checks, and rebuild DB from scratch**
