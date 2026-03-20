@@ -10,11 +10,11 @@
 
 ## Active Tasks (In Progress)
 
-## Backlog (Upcoming)
-
-- [ ] **matcher - expand array-based matcher flow to use pipeline**
+- [ ] **matcher - expand array-based matcher flow to use pipeline** (In Progress - Subagent Started)
   - Update the existing matcher package flow that processes arrays of release strings so it calls the new single-string pipeline function.
   - Add tests using real examples from `files.txt`.
+
+## Backlog (Upcoming)
 
 - [ ] **matcher - add Validate() entrypoint on MatchCandidate**
   - Add the entrypoint:
