@@ -786,3 +786,60 @@ func TestParseReleases(t *testing.T) {
 		t.Fatalf("expected parsed releases %v, got %v", want, got)
 	}
 }
+
+func TestParseReleasesWithFilesTxt(t *testing.T) {
+	releases := []string{
+		"NFL.2021-09-19.Week.2.NE.at.NYJ.mkv",
+		"NFL.2023.Super.Bowl.LVII.Chiefs.vs.Eagles",
+		"NFL.2022-01-15.Wild.Card.BAL.at.BUF",
+		"NFL_20181216_w15_Patriots_at_Steelers",
+		"NFL.2023.Divisional.Packers.at.49ers.720p",
+		"NFL.2022.Conference.Championship.Bengals.at.Chiefs",
+	}
+
+	got := ParseReleases(releases)
+	want := []string{
+		"2021-09-19",
+		"2023.Super.Bowl",
+		"2021.Wildcard",
+		"2018-12-16",
+		"2023.Divisional",
+		"2022.Championship",
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected parsed releases %v, got %v", want, got)
+	}
+}
+
+func TestMatchCandidate_Validate(t *testing.T) {
+	mc := MatchCandidate{
+		OriginalInput: "NFL.2024.12.15.Patriots.at.Browns",
+		GameType:      GameTypeRegularSeason,
+		GameDate:      "2024-12-15",
+		SeasonYear:    "2024",
+		AwayTeam:      "NE",
+		HomeTeam:      "CLE",
+	}
+
+	match := mc.Validate()
+
+	if match.OriginalInput != mc.OriginalInput {
+		t.Errorf("Expected OriginalInput %s, got %s", mc.OriginalInput, match.OriginalInput)
+	}
+	if match.GameType != mc.GameType {
+		t.Errorf("Expected GameType %s, got %s", mc.GameType, match.GameType)
+	}
+	if match.GameDate != mc.GameDate {
+		t.Errorf("Expected GameDate %s, got %s", mc.GameDate, match.GameDate)
+	}
+	if match.SeasonYear != mc.SeasonYear {
+		t.Errorf("Expected SeasonYear %s, got %s", mc.SeasonYear, match.SeasonYear)
+	}
+	if match.AwayTeam != mc.AwayTeam {
+		t.Errorf("Expected AwayTeam %s, got %s", mc.AwayTeam, match.AwayTeam)
+	}
+	if match.HomeTeam != mc.HomeTeam {
+		t.Errorf("Expected HomeTeam %s, got %s", mc.HomeTeam, match.HomeTeam)
+	}
+}

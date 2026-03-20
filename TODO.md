@@ -10,13 +10,14 @@
 
 ## Active Tasks (In Progress)
 
-## Backlog (Upcoming)
-
 - [ ] **matcher - add Validate() entrypoint on MatchCandidate**
-  - Add the entrypoint:
-    - `func (mc MatchCandidate) Validate() Match`
-  - For now, keep this task focused on wiring the method/entrypoint shape and connecting it to a staged validation pipeline.
-  - Add only minimal scaffolding/tests if needed; detailed stage behavior should be implemented in separate tasks below.
+  - Status: In progress. Subagent started to wire the method and validation pipeline.
+  - Gameplan:
+    1. Define `func (mc MatchCandidate) Validate() Match` in `matcher/matcher.go`.
+    2. Create a private `validationPipeline` to hold the stages.
+    3. Add a basic test to ensure the entrypoint returns a `Match`.
+
+## Backlog (Upcoming)
 
 - [ ] **matcher validation - stage 1: exact GameDate + teams nflverse lookup**
   - If `GameDate` is set, search nflverse for games on that date.
@@ -52,6 +53,8 @@
   - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **matcher - add Validate() entrypoint on MatchCandidate**
+  - *Result:* Added `func (mc MatchCandidate) Validate() Match` plus a private validation-pipeline scaffold that currently returns a `Match` populated from the candidate fields, and added a focused matcher test verifying the entrypoint shape; matcher tests also now expect postseason array parsing to emit season-based labels like `2021.Wildcard`; `go test ./...` passes.
 - [x] **matcher - expand array-based matcher flow to use pipeline**
   - *Result:* Updated `ParseReleases` in `matcher/matcher.go` to use the `Pipeline` function for each release string; added logic to format the output as `Year.PostseasonType` for postseason games or `YYYY-MM-DD` for games with a date match, falling back to the original string if no NFL match is found; `go test ./...` passes.
 - [x] **matcher - implement MatchCandidate extraction pipeline function**
