@@ -6,7 +6,9 @@ import (
 )
 
 var (
-	ErrMissingDateForRegularSeason = errors.New("regular season game requires a date for validation")
+	ErrMissingDateForRegularSeason    = errors.New("regular season game requires a date for validation")
+	ErrMissingFieldsForNflverseLookup = errors.New("nflverse lookup requires game type, season year, home team, and away team")
+	ErrNoMatchFound                   = errors.New("no matching nflverse game found")
 )
 
 // GameType identifies the NFL game stage for matching.
@@ -58,6 +60,15 @@ func (mc MatchCandidate) validatePipeline() Match {
 		if err := nflverseLookupStage(db.DB, &match); err != nil {
 			match.Error = err
 		}
+		if match.NflverseID == "" {
+			if err := superBowlLookupStage(db.DB, &match); err != nil {
+				match.Error = err
+			}
+		}
+	}
+
+	if match.NflverseID == "" && match.Error == nil {
+		match.Error = ErrNoMatchFound
 	}
 
 	return match
@@ -75,4 +86,15 @@ type Match struct {
 	HomeTeam      string
 	NflverseID    string
 	Error         error
+}
+
+// Matched reports whether the match completed successfully with a
+// non-empty nflverse identifier.
+func (m Match) Matched() bool {
+	return m.Error == nil && m.NflverseID != ""
+}
+
+// IsResolved is kept as a compatibility alias for Matched.
+func (m Match) IsResolved() bool {
+	return m.Matched()
 }
