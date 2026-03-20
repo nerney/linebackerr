@@ -17,6 +17,19 @@ All matching against input strings should be case insensitive. Spaces, dashes, p
 The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
 `MatchCandidate` should also retain the original unaltered input string.
 
+- [ ] **bootstrap flow - refactor init wiring, remove sync checks, and rebuild DB from scratch**
+  - Refactor startup flow so it conceptually becomes:
+    - `deebee := db.Init()`
+    - `nflv := nflverse.Init(deebee)`
+    - `sportarr.Init(deebee, nflv)`
+    - `srvr := server.Init()`
+    - `srvr.Start()`
+  - Update package APIs/return values as needed so the initialization chain is explicit and `main.go` becomes a thin bootstrap entrypoint.
+  - Remove the sync-check workflow from startup, including the related logic in `main.go` and any associated DB fields/schema used only for sync tracking.
+  - Treat this as a clean-slate initialization task: remove/recreate the current DB files/schema and rebuild from scratch under the new flow.
+  - Make sure the task includes any necessary schema cleanup/migration-by-rebuild work so no dead sync-state remnants remain.
+  - Keep the scope focused on bootstrap/init/server wiring and DB reset mechanics; broader feature changes should stay in separate tasks.
+
 - [ ] **matcher - implement MatchCandidate extraction pipeline function**
   - Create a pipeline entrypoint that takes a single input string and returns a `MatchCandidate`.
   - Execute stages progressively in order:
@@ -71,6 +84,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **server - create dedicated server package and move web server startup behind Start()**
+  - *Result:* Added a dedicated `server` package that constructs the HTTP server, registers routes in `server.Init()`, documents where routes should be added for now, and refactored `main.go` to initialize the package and start serving via `svr.Start()`; `go test ./...` passes.
 - [x] **matcher - enrich team aliases from nflverse records and handle ambiguous city matches explicitly**
   - *Result:* Expanded the nflverse-driven alias inventory with practical alternate abbreviations/history markers (including `LAR`, `NWE`, `SDG`, `RAI`, `WSH`, etc.), kept ambiguous shared-city aliases such as `los angeles`/`la`/`new york` out of direct matching, surfaced them as an explicit `AmbiguousTeamAliasError` for downstream detection, added focused matcher tests for Rams/Chargers/Raiders/Washington coverage plus ambiguous city behavior, and `go test ./...` passes.
 - [x] **matcher - implement home/away team extraction stage**

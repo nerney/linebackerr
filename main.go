@@ -4,15 +4,10 @@ import (
 	"fmt"
 	"linebackerr/db"
 	"linebackerr/nflverse"
+	"linebackerr/server"
 	"linebackerr/sportarr"
 	"log"
-	"net/http"
 )
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "OK")
-}
 
 func main() {
 	// Initialize the shared DB first
@@ -49,10 +44,9 @@ func main() {
 		fmt.Println("sportarr data is up to date.")
 	}
 
-	http.HandleFunc("/health", healthHandler)
+	svr := server.Init()
 	fmt.Println("Server listening on port 6666...")
-	err := http.ListenAndServe(":6666", nil)
-	if err != nil {
+	if err := svr.Start(); err != nil {
 		fmt.Printf("Server failed: %v\n", err)
 	}
 }
