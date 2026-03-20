@@ -59,6 +59,32 @@ func DBPath() string {
 func initSchema(db *sql.DB) error {
 	fmt.Println("Creating linebackerr DB tables...")
 	queries := []string{
+		`PRAGMA foreign_keys = ON;`,
+		`CREATE TABLE IF NOT EXISTS nflverse_teams (
+			id TEXT PRIMARY KEY,
+			abbr TEXT,
+			full_name TEXT
+		);`,
+		`CREATE TABLE IF NOT EXISTS nflverse_games (
+			game_id TEXT PRIMARY KEY,
+			season INTEGER,
+			week INTEGER,
+			game_type TEXT,
+			gameday TEXT,
+			away_team_id TEXT,
+			home_team_id TEXT,
+			away_score INTEGER,
+			home_score INTEGER,
+			FOREIGN KEY (away_team_id) REFERENCES nflverse_teams(id),
+			FOREIGN KEY (home_team_id) REFERENCES nflverse_teams(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS nflverse_team_games (
+			team_id TEXT,
+			game_id TEXT,
+			PRIMARY KEY (team_id, game_id),
+			FOREIGN KEY (team_id) REFERENCES nflverse_teams(id),
+			FOREIGN KEY (game_id) REFERENCES nflverse_games(game_id)
+		);`,
 		`CREATE TABLE IF NOT EXISTS sportarr_team (
 			team_id TEXT PRIMARY KEY,
 			strLogo TEXT,

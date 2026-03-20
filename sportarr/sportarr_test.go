@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	linebackerrdb "linebackerr/db"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -36,31 +38,57 @@ func withPatchedTransport(tb testing.TB, route map[string]func(*http.Request) (*
 	})
 }
 
-func newTestDB(t *testing.T) *sql.DB {
+func newSportarrTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
+	database, err := sql.Open("sqlite3", "file::memory:?cache=shared")
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = database.Close() })
+	return database
+}
 
-	stmts := []string{
-		`CREATE TABLE sportarr_team (team_id TEXT PRIMARY KEY, strLogo TEXT, strBadge TEXT, strBanner TEXT, strFanart1 TEXT, strDescriptionEN TEXT);`,
-		`CREATE TABLE sportarr_seasons (year TEXT PRIMARY KEY, poster_url TEXT);`,
-		`CREATE TABLE nflverse_teams (id TEXT PRIMARY KEY, abbr TEXT, full_name TEXT);`,
+func TestResetDataRequiresSchemaOwnedByDBPackage(t *testing.T) {
+	database := newSportarrTestDB(t)
+
+	if err := resetData(database); err == nil {
+		t.Fatal("expected resetData to fail without pre-created schema")
 	}
-	for _, stmt := range stmts {
-		if _, err := db.Exec(stmt); err != nil {
-			t.Fatalf("create schema: %v", err)
+}
+
+func TestResetDataClearsExistingSportarrTables(t *testing.T) {
+	t.Setenv("LINEBACKERR_DATA_DIR", t.TempDir())
+	database := linebackerrdb.Init()
+	defer database.Close()
+
+	if _, err := database.Exec(`INSERT INTO sportarr_team (team_id, strLogo) VALUES ('NE', 'logo-ne')`); err != nil {
+		t.Fatalf("seed sportarr_team: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO sportarr_seasons (year, poster_url) VALUES ('2024', 'poster')`); err != nil {
+		t.Fatalf("seed sportarr_seasons: %v", err)
+	}
+
+	if err := resetData(database); err != nil {
+		t.Fatalf("resetData: %v", err)
+	}
+
+	for _, table := range []string{"sportarr_team", "sportarr_seasons"} {
+		var count int
+		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if count != 0 {
+			t.Fatalf("expected %s to be empty after reset, got %d rows", table, count)
 		}
 	}
-
-	return db
 }
 
 func TestLoadTeamsStoresLookupData(t *testing.T) {
-	db := newTestDB(t)
-	if _, err := db.Exec(`INSERT INTO nflverse_teams (id, abbr, full_name) VALUES ('NE', 'NE', 'New England Patriots'), ('BUF', 'BUF', 'Buffalo Bills')`); err != nil {
+	t.Setenv("LINEBACKERR_DATA_DIR", t.TempDir())
+	database := linebackerrdb.Init()
+	defer database.Close()
+
+	if _, err := database.Exec(`INSERT INTO nflverse_teams (id, abbr, full_name) VALUES ('NE', 'NE', 'New England Patriots'), ('BUF', 'BUF', 'Buffalo Bills')`); err != nil {
 		t.Fatalf("seed teams: %v", err)
 	}
 
@@ -76,13 +104,13 @@ func TestLoadTeamsStoresLookupData(t *testing.T) {
 		},
 	})
 
-	client := &Client{DB: db}
+	client := &Client{DB: database}
 	if err := client.LoadTeams(); err != nil {
 		t.Fatalf("LoadTeams: %v", err)
 	}
 
 	var gotID, gotLogo, gotBadge, gotBanner, gotFanart, gotDesc string
-	if err := db.QueryRow(`SELECT team_id, strLogo, strBadge, strBanner, strFanart1, strDescriptionEN FROM sportarr_team WHERE team_id = 'NE'`).Scan(&gotID, &gotLogo, &gotBadge, &gotBanner, &gotFanart, &gotDesc); err != nil {
+	if err := database.QueryRow(`SELECT team_id, strLogo, strBadge, strBanner, strFanart1, strDescriptionEN FROM sportarr_team WHERE team_id = 'NE'`).Scan(&gotID, &gotLogo, &gotBadge, &gotBanner, &gotFanart, &gotDesc); err != nil {
 		t.Fatalf("query team row: %v", err)
 	}
 
@@ -91,7 +119,7 @@ func TestLoadTeamsStoresLookupData(t *testing.T) {
 	}
 
 	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM sportarr_team`).Scan(&count); err != nil {
+	if err := database.QueryRow(`SELECT COUNT(*) FROM sportarr_team`).Scan(&count); err != nil {
 		t.Fatalf("count rows: %v", err)
 	}
 	if count != 1 {
@@ -100,7 +128,9 @@ func TestLoadTeamsStoresLookupData(t *testing.T) {
 }
 
 func TestLoadSeasonsStoresMainAndScrapedPosters(t *testing.T) {
-	db := newTestDB(t)
+	t.Setenv("LINEBACKERR_DATA_DIR", t.TempDir())
+	database := linebackerrdb.Init()
+	defer database.Close()
 
 	withPatchedTransport(t, map[string]func(*http.Request) (*http.Response, error){
 		"https://sportarr.net/api/metadata/plex/series/4391/seasons": func(req *http.Request) (*http.Response, error) {
@@ -118,12 +148,12 @@ func TestLoadSeasonsStoresMainAndScrapedPosters(t *testing.T) {
 		},
 	})
 
-	client := &Client{DB: db}
+	client := &Client{DB: database}
 	if err := client.LoadSeasons(); err != nil {
 		t.Fatalf("LoadSeasons: %v", err)
 	}
 
-	rows, err := db.Query(`SELECT year, poster_url FROM sportarr_seasons ORDER BY year`)
+	rows, err := database.Query(`SELECT year, poster_url FROM sportarr_seasons ORDER BY year`)
 	if err != nil {
 		t.Fatalf("query seasons: %v", err)
 	}

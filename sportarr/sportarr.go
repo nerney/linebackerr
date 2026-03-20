@@ -45,8 +45,8 @@ type SportarrLookup struct {
 func Init(database *sql.DB, nflv *nflverse.Client) *Client {
 	fmt.Println("Initializing sportarr package...")
 
-	if err := initDB(database); err != nil {
-		panic(fmt.Errorf("failed to initialize sportarr db schema: %w", err))
+	if err := resetData(database); err != nil {
+		panic(fmt.Errorf("failed to reset sportarr data: %w", err))
 	}
 
 	client := &Client{DB: database, NFLverse: nflv}
@@ -61,7 +61,7 @@ func Init(database *sql.DB, nflv *nflverse.Client) *Client {
 	return client
 }
 
-func initDB(db *sql.DB) error {
+func resetData(db *sql.DB) error {
 	queries := []string{
 		`DELETE FROM sportarr_team;`,
 		`DELETE FROM sportarr_seasons;`,

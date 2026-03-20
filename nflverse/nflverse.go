@@ -24,7 +24,7 @@ type Client struct {
 	TeamMap map[string]string
 }
 
-// Init downloads the nflverse CSV data, rebuilds nflverse tables, and returns the initialized client.
+// Init downloads the nflverse CSV data, reloads nflverse tables, and returns the initialized client.
 func Init(database *sql.DB) *Client {
 	fmt.Println("Initializing nflverse package...")
 
@@ -49,8 +49,8 @@ func Init(database *sql.DB) *Client {
 		panic(err)
 	}
 
-	if err := initDB(database); err != nil {
-		panic(fmt.Errorf("failed to initialize db schema: %w", err))
+	if err := resetData(database); err != nil {
+		panic(fmt.Errorf("failed to reset nflverse data: %w", err))
 	}
 
 	teamMap, err := loadTeams(database, teamsPath)
@@ -66,37 +66,11 @@ func Init(database *sql.DB) *Client {
 	return &Client{DB: database, TeamMap: teamMap}
 }
 
-func initDB(db *sql.DB) error {
-	fmt.Println("Creating database tables for nflverse...")
-
+func resetData(db *sql.DB) error {
 	queries := []string{
-		`DROP TABLE IF EXISTS nflverse_team_games;`,
-		`DROP TABLE IF EXISTS nflverse_games;`,
-		`DROP TABLE IF EXISTS nflverse_teams;`,
-		`CREATE TABLE nflverse_teams (
-			id TEXT PRIMARY KEY,
-			abbr TEXT,
-			full_name TEXT
-		);`,
-		`CREATE TABLE nflverse_games (
-			game_id TEXT PRIMARY KEY,
-			season INTEGER,
-			week INTEGER,
-			gameday TEXT,
-			away_team_id TEXT,
-			home_team_id TEXT,
-			away_score INTEGER,
-			home_score INTEGER,
-			FOREIGN KEY (away_team_id) REFERENCES nflverse_teams(id),
-			FOREIGN KEY (home_team_id) REFERENCES nflverse_teams(id)
-		);`,
-		`CREATE TABLE nflverse_team_games (
-			team_id TEXT,
-			game_id TEXT,
-			PRIMARY KEY (team_id, game_id),
-			FOREIGN KEY (team_id) REFERENCES nflverse_teams(id),
-			FOREIGN KEY (game_id) REFERENCES nflverse_games(game_id)
-		);`,
+		`DELETE FROM nflverse_team_games;`,
+		`DELETE FROM nflverse_games;`,
+		`DELETE FROM nflverse_teams;`,
 	}
 
 	for _, q := range queries {
@@ -104,7 +78,6 @@ func initDB(db *sql.DB) error {
 			return err
 		}
 	}
-	fmt.Println("Tables created successfully.")
 	return nil
 }
 
@@ -207,7 +180,7 @@ func loadGames(db *sql.DB, path string, teamMap map[string]string) error {
 		return err
 	}
 
-	gameStmt, err := tx.Prepare("INSERT OR IGNORE INTO nflverse_games (game_id, season, week, gameday, away_team_id, home_team_id, away_score, home_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+	gameStmt, err := tx.Prepare("INSERT OR IGNORE INTO nflverse_games (game_id, season, week, game_type, gameday, away_team_id, home_team_id, away_score, home_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
@@ -246,7 +219,7 @@ func loadGames(db *sql.DB, path string, teamMap map[string]string) error {
 		awayID := teamMap[awayAbbr]
 		homeID := teamMap[homeAbbr]
 
-		_, err = gameStmt.Exec(gameID, getCol("season"), getCol("week"), getCol("gameday"), awayID, homeID, getCol("away_score"), getCol("home_score"))
+		_, err = gameStmt.Exec(gameID, getCol("season"), getCol("week"), getCol("game_type"), getCol("gameday"), nullableTeamID(awayID), nullableTeamID(homeID), getCol("away_score"), getCol("home_score"))
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -269,6 +242,13 @@ func loadGames(db *sql.DB, path string, teamMap map[string]string) error {
 	}
 
 	return tx.Commit()
+}
+
+func nullableTeamID(teamID string) any {
+	if teamID == "" {
+		return nil
+	}
+	return teamID
 }
 
 func downloadFile(url, filepath string) error {
