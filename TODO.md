@@ -2,17 +2,13 @@
 
 ## Working Rules
 - All task runs should be executed by a subagent using the same config/model defaults as the main primary agent unless we explicitly decide otherwise.
-- Only one TODO task may be running at a time. Never run concurrent tasks from this queue.
+- Only one **Linebackerr TODO** task may be running at a time.
+- For this TODO queue, do not spawn work if **any other subagent is already running**.
+- This concurrency limit applies only to the Linebackerr TODO queue. It does **not** block user-requested `dev` subagent work outside this queue.
 - When a subagent starts work on a task, update that task status in this file.
 - When a subagent finishes, record the result here and move the task to Completed.
 
 ## Active Tasks (In Progress)
-- [ ] **matcher - build nflverse-driven team alias inventory**
-  - Gameplan:
-    - build alias sets from nflverse names/abbreviations/history where practical
-    - capture/document ambiguity tradeoffs
-    - add representative alias tests
-  - *Status:* Queued / promoted, not started
 
 ## Backlog (Upcoming)
 
@@ -81,6 +77,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **matcher - build nflverse-driven team alias inventory**
+  - *Result:* Added a matcher team alias inventory keyed by current nflverse-style abbreviations, including practical historical/relocation aliases (for example STL/LA Rams, SD/LAC Chargers, OAK/LV Raiders, WFT/Commanders), documented ambiguity tradeoffs for intentionally skipped shortcuts like bare `la`/`los angeles`/`new york`, added longest-alias team matching scaffolding, and added representative alias tests; `go test ./...` passes.
 - [x] **matcher - implement GameWeek extraction stage**
   - *Result:* Added `extractGameWeekStage` with numeric support for `week.#`, `week.##`, `w#`, `w##`, `wk.#`, and `wk.##`, plus valid Roman numeral extraction only for `GameType == SB`; matched week tokens are removed from the working string before downstream stages; added focused numeric and Super Bowl Roman numeral tests; `go test ./...` passes.
 - [x] **matcher - implement GameType extraction stage**

@@ -497,6 +497,109 @@ func TestParseReleasesHandlesGeneralNonAlphanumericSeparators(t *testing.T) {
 	}
 }
 
+func TestTeamAliasesIncludesHistoricalAndRepresentativeVariants(t *testing.T) {
+	aliases := TeamAliases()
+
+	tests := []struct {
+		team string
+		want []string
+	}{
+		{team: "NE", want: []string{"new england patriots", "patriots", "ne"}},
+		{team: "LA", want: []string{"los angeles rams", "st louis rams", "stl"}},
+		{team: "LAC", want: []string{"los angeles chargers", "san diego chargers", "sdg"}},
+		{team: "LV", want: []string{"las vegas raiders", "oakland raiders", "oak"}},
+		{team: "WAS", want: []string{"washington commanders", "washington football team", "washington redskins", "wsh"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.team, func(t *testing.T) {
+			gotAliases, ok := aliases[tt.team]
+			if !ok {
+				t.Fatalf("expected aliases for team %q", tt.team)
+			}
+			for _, want := range tt.want {
+				found := false
+				for _, alias := range gotAliases {
+					if NormalizeForMatch(alias) == NormalizeForMatch(want) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("expected alias %q for team %q in %v", want, tt.team, gotAliases)
+				}
+			}
+		})
+	}
+}
+
+func TestMatchTeamAlias(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantTeam  string
+		wantStart int
+		wantEnd   int
+		wantFound bool
+	}{
+		{
+			name:      "matches full current franchise name",
+			input:     "NFL New England Patriots at Jets",
+			wantTeam:  "NE",
+			wantStart: 1,
+			wantEnd:   4,
+			wantFound: true,
+		},
+		{
+			name:      "matches historical relocated franchise name",
+			input:     "NFL St. Louis Rams at Patriots",
+			wantTeam:  "LA",
+			wantStart: 1,
+			wantEnd:   4,
+			wantFound: true,
+		},
+		{
+			name:      "matches historical abbreviation alias",
+			input:     "NFL SD at KC",
+			wantTeam:  "LAC",
+			wantStart: 1,
+			wantEnd:   2,
+			wantFound: true,
+		},
+		{
+			name:      "prefers longer alias over mascot-only match",
+			input:     "NFL Washington Football Team at Eagles",
+			wantTeam:  "WAS",
+			wantStart: 1,
+			wantEnd:   4,
+			wantFound: true,
+		},
+		{
+			name:      "does not match intentionally ambiguous bare los angeles",
+			input:     "Los Angeles",
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotTeam, gotStart, gotEnd, gotFound := matchTeamAlias(TokenizeForMatch(tt.input))
+			if gotFound != tt.wantFound {
+				t.Fatalf("expected found=%v, got %v", tt.wantFound, gotFound)
+			}
+			if !tt.wantFound {
+				return
+			}
+			if gotTeam != tt.wantTeam {
+				t.Fatalf("expected team %q, got %q", tt.wantTeam, gotTeam)
+			}
+			if gotStart != tt.wantStart || gotEnd != tt.wantEnd {
+				t.Fatalf("expected span [%d:%d), got [%d:%d)", tt.wantStart, tt.wantEnd, gotStart, gotEnd)
+			}
+		})
+	}
+}
+
 func TestParseReleases(t *testing.T) {
 	files := []string{
 		"N.F.L.2001.Super.Bowl.S2001E021.STL.at.NE.mkv",
