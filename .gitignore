@@ -1,1 +1,4 @@
-docker-data
+docker-data/
+*.db
+*.csv
+*.json
