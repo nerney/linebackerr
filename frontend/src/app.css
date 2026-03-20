@@ -1,0 +1,45 @@
+:root {
+  --lb-bg-start: #0f172a;
+  --lb-bg-end: #1d4ed8;
+  --lb-surface: rgba(17, 24, 39, 0.78);
+  --lb-text: #f8fafc;
+  --lb-muted: #cbd5e1;
+  --lb-accent: #f59e0b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: var(--lb-text);
+  background: radial-gradient(circle at top, var(--lb-bg-end), var(--lb-bg-start) 60%);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.brand-card {
+  width: min(640px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  background: var(--lb-surface);
+  backdrop-filter: blur(6px);
+}
+
+.icon-wrap {
+  color: var(--lb-accent);
+}
+
+.lead {
+  color: var(--lb-muted);
+}
