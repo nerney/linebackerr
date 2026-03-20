@@ -10,13 +10,6 @@
 
 ## Active Tasks (In Progress)
 
-- [ ] **matcher validation - stage 2: regular season early failure rule**
-  - *Status:* Subagent starting work.
-  - *Gameplan:*
-    1. Implement a new validation stage (or update existing pipeline) to check for `RS` game type without a `GameDate`.
-    2. Define a specific error for this failure.
-    3. Add tests in `matcher/matcher_test.go` to verify the failure.
-
 ## Backlog (Upcoming)
 
 
@@ -44,6 +37,8 @@
   - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **matcher validation - stage 2: regular season early failure rule**
+  - *Result:* Implemented a validation rule in `matcher/match_candidate.go` that fails early if `GameType == RS` and `GameDate` is empty, returning a new `ErrMissingDateForRegularSeason` error; added focused tests in `matcher/matcher_test.go` verifying failure and pass paths for regular season and postseason games; `go test ./matcher/...` passes.
 - [x] **matcher validation - stage 1: exact GameDate + teams nflverse lookup**
   - *Result:* Implemented `nflverseLookupStage` in `matcher/nflverse_lookup_stage.go` which queries the `nflverse_games` table for an exact `GameDate` and participating teams (handling either home/away order). Wired this stage into `validatePipeline` in `matcher/match_candidate.go`. Added focused tests in `matcher/matcher_test.go` verifying successful lookups, team swaps, and no-match scenarios; `go test ./matcher/...` passes.
 - [x] **matcher - add Validate() entrypoint on MatchCandidate**
