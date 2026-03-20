@@ -17,7 +17,6 @@ All matching against input strings should be case insensitive. Spaces, dashes, p
 The pipeline should progressively extract fields and sometimes remove matched substrings before passing the transformed string to the next stage.
 `MatchCandidate` should also retain the original unaltered input string.
 
-- [ ] **bootstrap flow - refactor init wiring, remove sync checks, and rebuild DB from scratch**
   - Refactor startup flow so it conceptually becomes:
     - `deebee := db.Init()`
     - `nflv := nflverse.Init(deebee)`
@@ -84,6 +83,8 @@ The pipeline should progressively extract fields and sometimes remove matched su
   - Add focused tests for unmatched/error returns.
 
 ## Completed
+- [x] **bootstrap flow - refactor init wiring, remove sync checks, and rebuild DB from scratch**
+  - *Result:* Refactored startup so `main.go` is a thin bootstrap entrypoint calling explicit `db`, `nflverse`, `sportarr`, and `server` init/start steps; removed sync-check startup logic and related sync-state DB usage; rebuilt init flows around clean-slate DB/table resets; updated bootstrap-related tests; `go test ./...` passes.
 - [x] **server - create dedicated server package and move web server startup behind Start()**
   - *Result:* Added a dedicated `server` package that constructs the HTTP server, registers routes in `server.Init()`, documents where routes should be added for now, and refactored `main.go` to initialize the package and start serving via `svr.Start()`; `go test ./...` passes.
 - [x] **matcher - enrich team aliases from nflverse records and handle ambiguous city matches explicitly**
